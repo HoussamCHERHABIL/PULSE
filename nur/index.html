@@ -4670,26 +4670,38 @@
             state.initialScrollLeft = centerX - window.innerWidth / 2;
             state.initialScrollTop = centerY - 100;
 
+            // Load saved positions from localStorage
+            const savedPositions = JSON.parse(localStorage.getItem('nur_widget_positions') || '{}');
+
             const bar = document.getElementById('adminBar');
-            state.adminBarLeft = centerX - BAR_WIDTH / 2;
-            state.adminBarTop = centerY;
+            if (savedPositions.adminBar) {
+                state.adminBarLeft = savedPositions.adminBar.x;
+                state.adminBarTop = savedPositions.adminBar.y;
+            } else {
+                state.adminBarLeft = centerX - BAR_WIDTH / 2;
+                state.adminBarTop = centerY;
+            }
             bar.style.left = state.adminBarLeft + 'px';
             bar.style.top = state.adminBarTop + 'px';
 
             const barBottom = centerY + 60, startX = centerX - BAR_WIDTH / 2;
-            const gap = 20; // Consistent spacing
 
-            const widgets = [
+            const defaultWidgets = [
                 { id: 'widgetTasks', x: 0, y: 0 },
                 { id: 'widgetCalendar', x: 470, y: 0 },
                 { id: 'widgetEmail', x: 940, y: 0 },
                 { id: 'widgetChat', x: 470, y: 540 }
             ];
 
-            widgets.forEach(w => {
+            defaultWidgets.forEach(w => {
                 const el = document.getElementById(w.id);
-                el.style.left = (startX + w.x) + 'px';
-                el.style.top = (barBottom + w.y) + 'px';
+                if (savedPositions[w.id]) {
+                    el.style.left = savedPositions[w.id].x + 'px';
+                    el.style.top = savedPositions[w.id].y + 'px';
+                } else {
+                    el.style.left = (startX + w.x) + 'px';
+                    el.style.top = (barBottom + w.y) + 'px';
+                }
                 el.style.width = widgetSizes[w.id].width + 'px';
                 el.style.height = widgetSizes[w.id].height + 'px';
             });
@@ -4698,6 +4710,13 @@
             document.querySelectorAll('.voice-note').forEach(note => {
                 makeVoiceNoteDraggable(note);
             });
+        }
+        
+        // Save widget position to localStorage
+        function saveWidgetPosition(id, x, y) {
+            const saved = JSON.parse(localStorage.getItem('nur_widget_positions') || '{}');
+            saved[id] = { x: parseInt(x), y: parseInt(y) };
+            localStorage.setItem('nur_widget_positions', JSON.stringify(saved));
         }
 
         function centerView() {
@@ -5355,6 +5374,13 @@
             selectedElements.forEach(el => el.classList.remove('selected'));
             selectedElements.clear();
         }
+        
+        // Escape key clears selection
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') {
+                clearAllSelections();
+            }
+        });
 
         function initDraggable() {
             state.voiceNotes.forEach(id => makeDraggable(document.getElementById(id)));
@@ -5392,6 +5418,8 @@
             document.addEventListener('mouseup', () => {
                 if (isDraggingBar) {
                     isDraggingBar = false;
+                    // Save admin bar position
+                    saveWidgetPosition('adminBar', bar.style.left, bar.style.top);
                 }
             });
             
@@ -5441,10 +5469,26 @@
             document.addEventListener('mouseup', () => {
                 if (isMultiDragging) {
                     isMultiDragging = false;
-                    // Update positions in database for browser widgets
+                    // Save positions for ALL dragged elements
                     multiDragOffsets.forEach(item => {
+                        // Save to localStorage for main widgets
+                        saveWidgetPosition(item.el.id, item.el.style.left, item.el.style.top);
+                        
+                        // Also update database for browser widgets
                         if (item.el.classList.contains('browser-widget-instance')) {
                             updateBrowserWidgetPos(item.el.id, item.el.offsetLeft, item.el.offsetTop);
+                        }
+                        // Update database for file widgets
+                        if (item.el.classList.contains('file-widget')) {
+                            updateFileWidgetPos(item.el.id, item.el.offsetLeft, item.el.offsetTop);
+                        }
+                        // Update database for sticky notes
+                        if (item.el.classList.contains('sticky-note')) {
+                            saveStickyNote(item.el.id);
+                        }
+                        // Update database for voice notes
+                        if (item.el.classList.contains('voice-note')) {
+                            updateVoiceNotePosition(item.el.id, item.el.offsetLeft, item.el.offsetTop);
                         }
                     });
                     multiDragOffsets = [];
@@ -5541,7 +5585,14 @@
             
             // Click on workspace background to clear selection (only without Shift)
             document.getElementById('workspaceContent').addEventListener('click', e => {
-                if (e.target.id === 'workspaceContent' && !e.shiftKey) {
+                if ((e.target.id === 'workspaceContent' || e.target.id === 'selectionBox') && !e.shiftKey) {
+                    clearAllSelections();
+                }
+            });
+            
+            // Also clear on workspace click
+            document.getElementById('workspace').addEventListener('click', e => {
+                if (e.target.id === 'workspace' && !e.shiftKey) {
                     clearAllSelections();
                 }
             });
@@ -5549,6 +5600,8 @@
 
         function makeDraggable(el) {
             let isDragging = false, sx, sy, ox, oy;
+            let startScrollX, startScrollY;
+            
             el.addEventListener('mousedown', e => {
                 if (e.target.closest('button') || e.button === 2) return;
                 
@@ -5562,21 +5615,39 @@
                 // If not selected or only one selected, start normal drag
                 if (!selectedElements.has(el) || selectedElements.size <= 1) {
                     clearAllSelections();
+                    const workspace = document.getElementById('workspace');
                     isDragging = true; 
                     sx = e.clientX; 
                     sy = e.clientY;
                     ox = el.offsetLeft; 
                     oy = el.offsetTop;
+                    startScrollX = workspace.scrollLeft;
+                    startScrollY = workspace.scrollTop;
+                    e.preventDefault();
                 }
             });
-            document.addEventListener('mousemove', e => {
+            
+            const moveHandler = e => {
                 if (!isDragging) return;
-                el.style.left = (ox + (e.clientX - sx) / state.zoom) + 'px';
-                el.style.top = (oy + (e.clientY - sy) / state.zoom) + 'px';
-                // Auto-scroll when near edges
+                const workspace = document.getElementById('workspace');
+                const scrollDeltaX = (workspace.scrollLeft - startScrollX) / state.zoom;
+                const scrollDeltaY = (workspace.scrollTop - startScrollY) / state.zoom;
+                
+                el.style.left = (ox + (e.clientX - sx) / state.zoom + scrollDeltaX) + 'px';
+                el.style.top = (oy + (e.clientY - sy) / state.zoom + scrollDeltaY) + 'px';
                 autoScrollWhileDragging(e);
-            });
-            document.addEventListener('mouseup', () => isDragging = false);
+            };
+            
+            const upHandler = () => {
+                if (isDragging) {
+                    isDragging = false;
+                    // Save position
+                    saveWidgetPosition(el.id, el.style.left, el.style.top);
+                }
+            };
+            
+            document.addEventListener('mousemove', moveHandler);
+            document.addEventListener('mouseup', upHandler);
         }
 
         // Track double-click timing for widgets
