@@ -64,10 +64,60 @@
             width: 6000px;
             height: 4000px;
             transform-origin: 0 0;
+            /* Grid on content - moves with zoom */
             background-image: 
                 linear-gradient(var(--grid-color) 1px, transparent 1px),
                 linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
             background-size: 40px 40px;
+        }
+        
+        /* Zoom percentage overlay */
+        .zoom-overlay {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 8px 16px;
+            background: rgba(23, 23, 37, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            z-index: 10000;
+        }
+        
+        .zoom-overlay.visible {
+            opacity: 1;
+        }
+        
+        /* Drop zone for files */
+        .drop-zone-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(78, 180, 249, 0.1);
+            border: 3px dashed var(--admin-color);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            pointer-events: none;
+        }
+        
+        .drop-zone-overlay.active {
+            display: flex;
+        }
+        
+        .drop-zone-text {
+            padding: 20px 40px;
+            background: rgba(23, 23, 37, 0.95);
+            border-radius: 16px;
+            font-size: 18px;
+            color: var(--admin-color);
         }
 
         .mini-map {
@@ -90,6 +140,14 @@
         .mini-map.visible { opacity: 1; pointer-events: auto; }
         .mini-map-content { position: relative; width: 100%; height: 100px; background: rgba(255, 255, 255, 0.02); }
         .mini-map-viewport { position: absolute; border: 2px solid var(--admin-color); background: rgba(78, 180, 249, 0.15); border-radius: 2px; }
+        
+        .mini-map-zoom-display {
+            text-align: center;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--admin-color);
+            padding: 8px 0 4px;
+        }
         
         /* Widget indicators in minimap */
         .mini-map-widget {
@@ -3755,6 +3813,14 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
+    <!-- Zoom percentage overlay -->
+    <div class="zoom-overlay" id="zoomOverlay">100%</div>
+    
+    <!-- Drop zone for files -->
+    <div class="drop-zone-overlay" id="dropZone">
+        <div class="drop-zone-text">Drop files here</div>
+    </div>
+    
     <div class="workspace" id="workspace">
         <div class="workspace-content" id="workspaceContent">
             <div class="selection-box" id="selectionBox"></div>
@@ -4291,6 +4357,7 @@
         <div class="mini-map-content" id="miniMapContent">
             <div class="mini-map-viewport" id="miniMapViewport"></div>
         </div>
+        <div class="mini-map-zoom-display" id="zoomPercentDisplay">100%</div>
         <div class="mini-map-zoom-slider">
             <span class="zoom-label">20%</span>
             <div class="zoom-track" onclick="handleZoomSliderClick(event)">
@@ -4666,25 +4733,30 @@
         }
 
         function positionElements() {
-            const centerX = WORKSPACE_WIDTH / 2, centerY = 300;
-            state.initialScrollLeft = centerX - window.innerWidth / 2;
-            state.initialScrollTop = centerY - 100;
-
             // Load saved positions from localStorage
             const savedPositions = JSON.parse(localStorage.getItem('nur_widget_positions') || '{}');
+            
+            // Default center position
+            const defaultCenterX = WORKSPACE_WIDTH / 2;
+            const defaultCenterY = 300;
 
             const bar = document.getElementById('adminBar');
             if (savedPositions.adminBar) {
                 state.adminBarLeft = savedPositions.adminBar.x;
                 state.adminBarTop = savedPositions.adminBar.y;
             } else {
-                state.adminBarLeft = centerX - BAR_WIDTH / 2;
-                state.adminBarTop = centerY;
+                state.adminBarLeft = defaultCenterX - BAR_WIDTH / 2;
+                state.adminBarTop = defaultCenterY;
             }
             bar.style.left = state.adminBarLeft + 'px';
             bar.style.top = state.adminBarTop + 'px';
+            
+            // Calculate initial scroll to center on admin bar
+            state.initialScrollLeft = (state.adminBarLeft + BAR_WIDTH / 2) - window.innerWidth / 2;
+            state.initialScrollTop = state.adminBarTop - 100;
 
-            const barBottom = centerY + 60, startX = centerX - BAR_WIDTH / 2;
+            const barBottom = state.adminBarTop + 60;
+            const startX = state.adminBarLeft;
 
             const defaultWidgets = [
                 { id: 'widgetTasks', x: 0, y: 0 },
@@ -4721,8 +4793,22 @@
 
         function centerView() {
             const ws = document.getElementById('workspace');
-            ws.scrollLeft = state.initialScrollLeft;
-            ws.scrollTop = state.initialScrollTop;
+            const bar = document.getElementById('adminBar');
+            
+            // Get bar position
+            const barLeft = parseInt(bar.style.left) || state.adminBarLeft || (WORKSPACE_WIDTH / 2 - BAR_WIDTH / 2);
+            const barTop = parseInt(bar.style.top) || state.adminBarTop || 300;
+            
+            // Center view on admin bar
+            const barCenterX = barLeft + BAR_WIDTH / 2;
+            
+            // Calculate scroll to center bar in view
+            ws.scrollLeft = (barCenterX * state.zoom) - (window.innerWidth / 2);
+            ws.scrollTop = (barTop * state.zoom) - 100;
+            
+            // Ensure we don't have negative scroll
+            ws.scrollLeft = Math.max(0, ws.scrollLeft);
+            ws.scrollTop = Math.max(0, ws.scrollTop);
         }
 
         function showMiniMap() {
@@ -4738,11 +4824,15 @@
             const content = document.getElementById('miniMapContent');
             const vp = document.getElementById('miniMapViewport');
             
-            // Use fixed scale based on total workspace size
+            // Get actual content dimensions (may be larger than initial if expanded)
+            const actualWidth = Math.max(WORKSPACE_WIDTH, ws.scrollWidth / state.zoom);
+            const actualHeight = Math.max(WORKSPACE_HEIGHT, ws.scrollHeight / state.zoom);
+            
+            // Use fixed scale based on actual workspace size
             const mapWidth = 180;
             const mapHeight = 100;
-            const scaleX = mapWidth / WORKSPACE_WIDTH;
-            const scaleY = mapHeight / WORKSPACE_HEIGHT;
+            const scaleX = mapWidth / actualWidth;
+            const scaleY = mapHeight / actualHeight;
             
             // Calculate visible area size (affected by zoom - smaller zoom = larger visible area)
             const visibleWidth = ws.clientWidth / state.zoom;
@@ -4752,17 +4842,17 @@
             const scrollX = ws.scrollLeft / state.zoom;
             const scrollY = ws.scrollTop / state.zoom;
             
-            // Calculate viewport dimensions and position
-            const vpWidth = Math.min(mapWidth, Math.max(10, visibleWidth * scaleX));
-            const vpHeight = Math.min(mapHeight, Math.max(8, visibleHeight * scaleY));
-            const vpLeft = Math.max(0, Math.min(mapWidth - vpWidth, scrollX * scaleX));
-            const vpTop = Math.max(0, Math.min(mapHeight - vpHeight, scrollY * scaleY));
+            // Calculate viewport dimensions and position - NO clamping to allow tracking anywhere
+            const vpWidth = Math.max(8, visibleWidth * scaleX);
+            const vpHeight = Math.max(6, visibleHeight * scaleY);
+            const vpLeft = scrollX * scaleX;
+            const vpTop = scrollY * scaleY;
             
             // Update viewport
-            vp.style.width = vpWidth + 'px';
-            vp.style.height = vpHeight + 'px';
-            vp.style.left = vpLeft + 'px';
-            vp.style.top = vpTop + 'px';
+            vp.style.width = Math.min(vpWidth, mapWidth) + 'px';
+            vp.style.height = Math.min(vpHeight, mapHeight) + 'px';
+            vp.style.left = Math.max(0, Math.min(vpLeft, mapWidth - 8)) + 'px';
+            vp.style.top = Math.max(0, Math.min(vpTop, mapHeight - 6)) + 'px';
             
             // Update zoom slider and tooltip
             const zoomPercent = ((state.zoom - 0.2) / (2.0 - 0.2)) * 100;
@@ -4772,6 +4862,10 @@
             if (zoomFill) zoomFill.style.width = zoomPercent + '%';
             if (zoomHandle) zoomHandle.style.left = zoomPercent + '%';
             if (zoomTooltip) zoomTooltip.textContent = Math.round(state.zoom * 100) + '%';
+            
+            // Also update permanent zoom display
+            const zoomDisplay = document.getElementById('zoomPercentDisplay');
+            if (zoomDisplay) zoomDisplay.textContent = Math.round(state.zoom * 100) + '%';
             
             // Remove old widget indicators
             content.querySelectorAll('.mini-map-widget').forEach(w => w.remove());
@@ -4870,9 +4964,43 @@
 
         function zoomIn() { if (state.zoom < 2.0) { state.zoom = Math.min(2.0, state.zoom + 0.1); applyZoom(); } }
         function zoomOut() { if (state.zoom > 0.2) { state.zoom = Math.max(0.2, state.zoom - 0.1); applyZoom(); } }
+        
+        let zoomOverlayTimeout = null;
+        
         function applyZoom() {
-            document.getElementById('workspaceContent').style.transform = `scale(${state.zoom})`;
-            document.getElementById('zoomDisplay').textContent = Math.round(state.zoom * 100) + '%';
+            const content = document.getElementById('workspaceContent');
+            content.style.transform = `scale(${state.zoom})`;
+            
+            // Update zoom display
+            const zoomPercent = Math.round(state.zoom * 100) + '%';
+            document.getElementById('zoomDisplay').textContent = zoomPercent;
+            
+            // Show zoom overlay
+            const overlay = document.getElementById('zoomOverlay');
+            if (overlay) {
+                overlay.textContent = zoomPercent;
+                overlay.classList.add('visible');
+                clearTimeout(zoomOverlayTimeout);
+                zoomOverlayTimeout = setTimeout(() => {
+                    overlay.classList.remove('visible');
+                }, 1500);
+            }
+            
+            // Adaptive grid for low zoom - use dots instead of lines
+            if (state.zoom < 0.5) {
+                // At very low zoom, use dot grid
+                const dotSize = Math.max(1, 2 / state.zoom);
+                const gridSize = 40;
+                content.style.backgroundImage = `radial-gradient(circle, rgba(255,255,255,0.08) ${dotSize}px, transparent ${dotSize}px)`;
+                content.style.backgroundSize = `${gridSize}px ${gridSize}px`;
+            } else {
+                // Normal line grid
+                content.style.backgroundImage = `
+                    linear-gradient(var(--grid-color) 1px, transparent 1px),
+                    linear-gradient(90deg, var(--grid-color) 1px, transparent 1px)`;
+                content.style.backgroundSize = '40px 40px';
+            }
+            
             showMiniMap();
         }
         
@@ -4898,9 +5026,8 @@
                 const oldZoom = state.zoom;
                 state.zoom = Math.max(0.2, Math.min(2.0, state.zoom + delta));
                 
-                // Apply transform
-                content.style.transform = `scale(${state.zoom})`;
-                document.getElementById('zoomDisplay').textContent = Math.round(state.zoom * 100) + '%';
+                // Apply zoom with adaptive grid
+                applyZoom();
                 
                 // Calculate new scroll position to keep cursor point fixed
                 const newCursorX = contentX * state.zoom;
@@ -4908,8 +5035,6 @@
                 
                 workspace.scrollLeft = newCursorX - (e.clientX - rect.left);
                 workspace.scrollTop = newCursorY - (e.clientY - rect.top);
-                
-                showMiniMap();
             }
         }, { passive: false });
         
@@ -4965,15 +5090,29 @@
             const bar = document.getElementById('adminBar');
             bar.classList.toggle('active', state.isActive);
             bar.classList.toggle('inactive', !state.isActive);
+            
+            // Hide/show ALL widgets
             document.querySelectorAll('.widget').forEach(w => {
-                // Use display for browser widgets, visible class for others
                 if (w.dataset.isBrowser === 'true') {
                     w.style.display = state.isActive ? 'flex' : 'none';
                 } else {
                     w.classList.toggle('visible', state.isActive);
                 }
             });
+            
+            // Hide/show voice notes
             document.querySelectorAll('.voice-note').forEach(n => n.classList.toggle('visible', state.isActive));
+            
+            // Hide/show sticky notes
+            document.querySelectorAll('.sticky-note').forEach(n => n.classList.toggle('visible', state.isActive));
+            
+            // Hide/show file widgets
+            document.querySelectorAll('.file-widget').forEach(f => f.classList.toggle('visible', state.isActive));
+            
+            // Hide/show browser widget instances
+            document.querySelectorAll('.browser-widget-instance').forEach(b => {
+                b.style.display = state.isActive ? 'flex' : 'none';
+            });
             
             // Auto-sync all data when activating
             if (state.isActive) {
@@ -9896,6 +10035,64 @@
             input.click();
         }
         
+        // Drag and drop file support
+        (function initDragDropFiles() {
+            const workspace = document.getElementById('workspace');
+            const dropZone = document.getElementById('dropZone');
+            let dragCounter = 0;
+            
+            // Prevent default drag behaviors
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                document.body.addEventListener(eventName, preventDefaults, false);
+            });
+            
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            
+            // Show drop zone on drag enter
+            document.body.addEventListener('dragenter', (e) => {
+                dragCounter++;
+                if (e.dataTransfer.types.includes('Files')) {
+                    dropZone.classList.add('active');
+                }
+            });
+            
+            // Hide drop zone on drag leave
+            document.body.addEventListener('dragleave', (e) => {
+                dragCounter--;
+                if (dragCounter === 0) {
+                    dropZone.classList.remove('active');
+                }
+            });
+            
+            // Handle drop
+            document.body.addEventListener('drop', async (e) => {
+                dragCounter = 0;
+                dropZone.classList.remove('active');
+                
+                const files = e.dataTransfer.files;
+                if (files.length === 0) return;
+                
+                // Get drop position
+                const rect = workspace.getBoundingClientRect();
+                contextMenuPosition.x = e.clientX - rect.left;
+                contextMenuPosition.y = e.clientY - rect.top;
+                
+                // Process each file
+                for (const file of files) {
+                    const type = file.type.startsWith('image/') ? 'image' : 
+                                 file.type === 'application/pdf' ? 'pdf' : 'doc';
+                    await createFileWidget(file, file.name, type);
+                    
+                    // Offset next file position slightly
+                    contextMenuPosition.x += 30;
+                    contextMenuPosition.y += 30;
+                }
+            });
+        })();
+        
         // Create file widget - clean design, saved to database
         async function createFileWidget(blob, filename, type, savedData = null) {
             const workspace = document.getElementById('workspace');
@@ -9913,12 +10110,15 @@
                 base64Data = await blobToBase64(blob);
             }
             
+            // Check if file is binary (DOCX, XLSX, etc.)
+            const isBinaryDoc = filename.match(/\.(docx?|xlsx?|pptx?|odt|ods|odp|zip|rar|7z|gz|exe|dll|so|dmg)$/i);
+            
             const widget = document.createElement('div');
             widget.className = 'widget file-widget visible';
             widget.id = widgetId;
             widget.dataset.fileType = type;
             widget.dataset.filename = filename;
-            widget.style.cssText = `left: ${x}px; top: ${y}px; width: ${width}px; height: ${height === 'auto' ? 'auto' : height + 'px'}; min-height: 100px; z-index: ${++state.highestZIndex}; cursor: grab; border-radius: 16px; overflow: hidden; background: rgba(23,23,37,0.95); border: 1px solid rgba(255,255,255,0.1);`;
+            widget.style.cssText = `left: ${x}px; top: ${y}px; width: ${isBinaryDoc ? '280px' : width + 'px'}; height: ${height === 'auto' ? 'auto' : (isBinaryDoc ? 'auto' : height + 'px')}; min-height: 100px; z-index: ${++state.highestZIndex}; cursor: grab; border-radius: 16px; overflow: hidden; background: rgba(23,23,37,0.95); border: 1px solid rgba(255,255,255,0.1);`;
             
             // Delete button (small, top-right corner)
             const deleteBtn = `<button class="file-widget-delete" onclick="deleteFileWidget('${widgetId}')" style="position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; border-radius: 50%; background: rgba(0,0,0,0.6); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s; z-index: 10;"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" style="width: 14px; height: 14px;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>`;
@@ -9939,6 +10139,22 @@
                         <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${filename}</span>
                     </div>
                     <iframe src="${pdfSrc}" style="width: 100%; height: calc(100% - 36px); border: none; background: white;"></iframe>
+                `;
+            } else if (isBinaryDoc) {
+                // Binary document - show file icon with download option
+                const ext = filename.split('.').pop().toUpperCase();
+                const iconColor = ext.includes('DOC') ? '#4285f4' : ext.includes('XLS') ? '#0f9d58' : ext.includes('PPT') ? '#db4437' : '#8B5CF6';
+                widget.innerHTML = `
+                    ${deleteBtn}
+                    <div style="padding: 20px; text-align: center;">
+                        <div style="width: 64px; height: 80px; margin: 0 auto 12px; background: ${iconColor}; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" style="width: 32px; height: 32px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                            <span style="font-size: 10px; color: white; font-weight: 700; margin-top: 4px;">${ext}</span>
+                        </div>
+                        <div style="font-size: 12px; color: var(--text); word-break: break-word;">${filename}</div>
+                        <div style="font-size: 10px; color: var(--text-dim); margin-top: 4px;">Binary document</div>
+                        ${base64Data ? `<a href="${base64Data}" download="${filename}" style="display: inline-block; margin-top: 12px; padding: 6px 12px; background: rgba(255,255,255,0.1); border-radius: 6px; font-size: 11px; color: var(--admin-color); text-decoration: none;">Download</a>` : ''}
+                    </div>
                 `;
             } else {
                 // Text/doc file
@@ -9974,7 +10190,7 @@
             
             // Save to database (only if new)
             if (!savedData) {
-                await saveFileWidgetToSupabase(widgetId, filename, type, base64Data, x, y, width, typeof height === 'number' ? height : 400, type === 'doc' ? (blob ? await blob.text() : '') : null);
+                await saveFileWidgetToSupabase(widgetId, filename, type, base64Data, x, y, isBinaryDoc ? 280 : width, typeof height === 'number' ? height : 400, type === 'doc' && !isBinaryDoc ? (blob ? await blob.text() : '') : null);
                 showToast(type === 'image' ? '📷 Image added' : type === 'pdf' ? '📄 PDF added' : '📎 File added');
             }
             
