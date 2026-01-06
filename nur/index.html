@@ -456,6 +456,35 @@
             outline-offset: 2px;
         }
         
+        /* File Widget */
+        .file-widget {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .file-widget.expanded {
+            width: 90vw !important;
+            height: 90vh !important;
+            max-width: 1200px !important;
+            max-height: 90vh !important;
+        }
+        .file-widget iframe {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,0.2) transparent;
+        }
+        .file-widget iframe::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .file-widget iframe::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .file-widget iframe::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.15);
+            border-radius: 3px;
+        }
+        .file-widget iframe::-webkit-scrollbar-thumb:hover {
+            background: rgba(255,255,255,0.25);
+        }
+        
         /* Selection Box */
         .selection-box {
             position: absolute;
@@ -3727,8 +3756,8 @@
 </head>
 <body>
     <div class="workspace" id="workspace">
-        <div class="selection-box" id="selectionBox"></div>
         <div class="workspace-content" id="workspaceContent">
+            <div class="selection-box" id="selectionBox"></div>
             <!-- Admin Bar -->
             <div class="admin-bar inactive" id="adminBar">
                 <div class="admin-sphere" id="adminSphere" onclick="toggleModule()">
@@ -4877,7 +4906,10 @@
         
         document.getElementById('workspace').addEventListener('mousedown', (e) => {
             // Only pan if clicking directly on workspace background (not on widgets or admin bar)
-            if (e.target.closest('.widget, .admin-bar, .voice-note, .sticky-note, .workspace-controls, .context-menu')) return;
+            if (e.target.closest('.widget, .admin-bar, .voice-note, .sticky-note, .workspace-controls, .context-menu, .file-widget, .browser-widget-instance')) return;
+            
+            // Don't pan if Shift is held (selection box mode)
+            if (e.shiftKey) return;
             
             isPanning = true;
             panStartX = e.clientX;
@@ -5428,13 +5460,15 @@
             workspaceEl.addEventListener('mousedown', e => {
                 // Only on background with Shift held
                 if (!e.shiftKey) return;
-                if (e.target.id !== 'workspace' && e.target.id !== 'workspaceContent') return;
+                if (e.target.id !== 'workspace' && e.target.id !== 'workspaceContent' && e.target.id !== 'selectionBox') return;
                 
                 isDrawingSelection = true;
                 const rect = workspaceEl.getBoundingClientRect();
+                
+                // Convert to workspaceContent coordinates (account for scroll and zoom)
                 selectionStart = {
-                    x: e.clientX - rect.left + workspaceEl.scrollLeft,
-                    y: e.clientY - rect.top + workspaceEl.scrollTop
+                    x: (e.clientX - rect.left + workspaceEl.scrollLeft) / state.zoom,
+                    y: (e.clientY - rect.top + workspaceEl.scrollTop) / state.zoom
                 };
                 
                 selectionBox.style.left = selectionStart.x + 'px';
@@ -5444,14 +5478,17 @@
                 selectionBox.style.display = 'block';
                 
                 e.preventDefault();
+                e.stopPropagation();
             });
             
             document.addEventListener('mousemove', e => {
                 if (!isDrawingSelection) return;
                 
                 const rect = workspaceEl.getBoundingClientRect();
-                const currentX = e.clientX - rect.left + workspaceEl.scrollLeft;
-                const currentY = e.clientY - rect.top + workspaceEl.scrollTop;
+                
+                // Convert to workspaceContent coordinates
+                const currentX = (e.clientX - rect.left + workspaceEl.scrollLeft) / state.zoom;
+                const currentY = (e.clientY - rect.top + workspaceEl.scrollTop) / state.zoom;
                 
                 const left = Math.min(selectionStart.x, currentX);
                 const top = Math.min(selectionStart.y, currentY);
@@ -5468,11 +5505,11 @@
                 if (!isDrawingSelection) return;
                 isDrawingSelection = false;
                 
-                // Get selection box bounds (in workspace coordinates, accounting for zoom)
-                const boxLeft = parseInt(selectionBox.style.left) / state.zoom;
-                const boxTop = parseInt(selectionBox.style.top) / state.zoom;
-                const boxRight = boxLeft + parseInt(selectionBox.style.width) / state.zoom;
-                const boxBottom = boxTop + parseInt(selectionBox.style.height) / state.zoom;
+                // Get selection box bounds (already in workspaceContent coordinates)
+                const boxLeft = parseInt(selectionBox.style.left);
+                const boxTop = parseInt(selectionBox.style.top);
+                const boxRight = boxLeft + parseInt(selectionBox.style.width);
+                const boxBottom = boxTop + parseInt(selectionBox.style.height);
                 
                 selectionBox.style.display = 'none';
                 
@@ -8928,6 +8965,7 @@
         function makeStickyDraggable(note) {
             let isDragging = false;
             let startX, startY, origX, origY;
+            let startScrollX, startScrollY;
             
             note.addEventListener('mousedown', (e) => {
                 if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.closest('.sticky-note-delete')) return;
@@ -8944,12 +8982,15 @@
                     return;
                 }
                 
+                const workspace = document.getElementById('workspace');
                 clearAllSelections();
                 isDragging = true;
                 startX = e.clientX;
                 startY = e.clientY;
                 origX = parseInt(note.style.left) || 0;
                 origY = parseInt(note.style.top) || 0;
+                startScrollX = workspace.scrollLeft;
+                startScrollY = workspace.scrollTop;
                 
                 note.style.zIndex = ++state.highestZIndex;
                 note.style.cursor = 'grabbing';
@@ -8960,11 +9001,15 @@
             document.addEventListener('mousemove', (e) => {
                 if (!isDragging) return;
                 
+                const workspace = document.getElementById('workspace');
+                const scrollDeltaX = (workspace.scrollLeft - startScrollX) / state.zoom;
+                const scrollDeltaY = (workspace.scrollTop - startScrollY) / state.zoom;
+                
                 const dx = (e.clientX - startX) / state.zoom;
                 const dy = (e.clientY - startY) / state.zoom;
                 
-                note.style.left = (origX + dx) + 'px';
-                note.style.top = (origY + dy) + 'px';
+                note.style.left = (origX + dx + scrollDeltaX) + 'px';
+                note.style.top = (origY + dy + scrollDeltaY) + 'px';
                 
                 // Auto-scroll when near edges
                 autoScrollWhileDragging(e);
@@ -9608,6 +9653,7 @@
         function makeVoiceNoteDraggable(note) {
             let isDragging = false;
             let startX, startY, origX, origY;
+            let startScrollX, startScrollY;
             
             note.addEventListener('mousedown', (e) => {
                 if (e.target.closest('.voice-note-play, .voice-note-delete')) return;
@@ -9624,12 +9670,15 @@
                     return;
                 }
                 
+                const workspace = document.getElementById('workspace');
                 clearAllSelections();
                 isDragging = true;
                 startX = e.clientX;
                 startY = e.clientY;
                 origX = parseInt(note.style.left) || 0;
                 origY = parseInt(note.style.top) || 0;
+                startScrollX = workspace.scrollLeft;
+                startScrollY = workspace.scrollTop;
                 
                 note.style.zIndex = ++state.highestZIndex;
                 note.style.cursor = 'grabbing';
@@ -9640,11 +9689,15 @@
             document.addEventListener('mousemove', (e) => {
                 if (!isDragging) return;
                 
+                const workspace = document.getElementById('workspace');
+                const scrollDeltaX = (workspace.scrollLeft - startScrollX) / state.zoom;
+                const scrollDeltaY = (workspace.scrollTop - startScrollY) / state.zoom;
+                
                 const dx = (e.clientX - startX) / state.zoom;
                 const dy = (e.clientY - startY) / state.zoom;
                 
-                note.style.left = (origX + dx) + 'px';
-                note.style.top = (origY + dy) + 'px';
+                note.style.left = (origX + dx + scrollDeltaX) + 'px';
+                note.style.top = (origY + dy + scrollDeltaY) + 'px';
                 
                 // Auto-scroll when near edges
                 autoScrollWhileDragging(e);
@@ -9876,15 +9929,25 @@
         function makeFileWidgetDraggable(widget) {
             let isDragging = false;
             let startX, startY, origX, origY;
+            let startScrollX, startScrollY;
+            let hasDraggedFile = false;
+            
+            // Store original size for collapse
+            widget.dataset.origWidth = widget.style.width || '450px';
+            widget.dataset.origHeight = widget.style.height || '520px';
             
             widget.addEventListener('mousedown', (e) => {
                 if (e.target.closest('button, iframe')) return;
                 
+                const workspace = document.getElementById('workspace');
+                hasDraggedFile = false;
                 isDragging = true;
                 startX = e.clientX;
                 startY = e.clientY;
                 origX = parseInt(widget.style.left) || 0;
                 origY = parseInt(widget.style.top) || 0;
+                startScrollX = workspace.scrollLeft;
+                startScrollY = workspace.scrollTop;
                 widget.style.cursor = 'grabbing';
                 widget.style.zIndex = ++state.highestZIndex;
                 e.preventDefault();
@@ -9893,11 +9956,17 @@
             document.addEventListener('mousemove', (e) => {
                 if (!isDragging) return;
                 
+                const workspace = document.getElementById('workspace');
+                const scrollDeltaX = (workspace.scrollLeft - startScrollX) / state.zoom;
+                const scrollDeltaY = (workspace.scrollTop - startScrollY) / state.zoom;
+                
                 const dx = (e.clientX - startX) / state.zoom;
                 const dy = (e.clientY - startY) / state.zoom;
                 
-                widget.style.left = (origX + dx) + 'px';
-                widget.style.top = (origY + dy) + 'px';
+                if (Math.abs(dx) > 3 || Math.abs(dy) > 3) hasDraggedFile = true;
+                
+                widget.style.left = (origX + dx + scrollDeltaX) + 'px';
+                widget.style.top = (origY + dy + scrollDeltaY) + 'px';
                 
                 // Auto-scroll when near edges
                 autoScrollWhileDragging(e);
@@ -9910,6 +9979,26 @@
                     updateFileWidgetPos(widget.id, parseInt(widget.style.left), parseInt(widget.style.top));
                     showMiniMap();
                 }
+            });
+            
+            // Double-click to expand/collapse
+            widget.addEventListener('dblclick', (e) => {
+                if (e.target.closest('button, iframe')) return;
+                if (hasDraggedFile) return;
+                
+                if (widget.classList.contains('expanded')) {
+                    // Collapse
+                    widget.classList.remove('expanded');
+                    widget.style.width = widget.dataset.origWidth;
+                    widget.style.height = widget.dataset.origHeight;
+                } else {
+                    // Store current size before expanding
+                    widget.dataset.origWidth = widget.style.width;
+                    widget.dataset.origHeight = widget.style.height;
+                    // Expand
+                    widget.classList.add('expanded');
+                }
+                showMiniMap();
             });
         }
         
@@ -10132,19 +10221,54 @@
                     }
                     if (newUrl) {
                         currentUrl = newUrl;
-                        if (isElectron) {
-                            browser.loadURL(newUrl);
-                        } else {
-                            browser.src = newUrl;
-                        }
                         titleEl.textContent = newUrl;
-                        loading.style.display = 'flex';
-                        blocked.style.display = 'none';
+                        
+                        // Update favicon
                         try {
                             const newUrlObj = new URL(newUrl);
                             faviconEl.src = `https://www.google.com/s2/favicons?domain=${newUrlObj.hostname}&sz=32`;
                             faviconEl.style.display = 'block';
-                        } catch (err) {}
+                            
+                            // Check if new URL is blocked
+                            const isNewUrlBlocked = blockedDomains.some(d => newUrlObj.hostname.includes(d));
+                            
+                            if (isNewUrlBlocked) {
+                                // Show blocked card immediately for known blocked sites
+                                loading.style.display = 'flex';
+                                blocked.style.display = 'none';
+                                browser.style.display = 'none';
+                                setTimeout(() => showBlockedCard(), 500);
+                            } else {
+                                // Try to load the site
+                                loading.style.display = 'flex';
+                                blocked.style.display = 'none';
+                                browser.style.display = 'block';
+                                
+                                if (isElectron) {
+                                    browser.loadURL(newUrl);
+                                } else {
+                                    browser.src = newUrl;
+                                    // Check after 3 seconds if blocked
+                                    setTimeout(() => {
+                                        try {
+                                            const doc = browser.contentDocument || browser.contentWindow?.document;
+                                            if (doc && (!doc.body || doc.body.innerHTML === '')) {
+                                                showBlockedCard();
+                                            } else {
+                                                loading.style.display = 'none';
+                                            }
+                                        } catch (err) {
+                                            showBlockedCard();
+                                        }
+                                    }, 3000);
+                                }
+                            }
+                        } catch (err) {
+                            // Invalid URL
+                            loading.style.display = 'flex';
+                            blocked.style.display = 'none';
+                            browser.src = newUrl;
+                        }
                     }
                     urlInput.style.display = 'none';
                     titleEl.style.display = 'block';
@@ -10217,18 +10341,27 @@
             ];
             const isKnownBlocked = blockedDomains.some(d => urlObj.hostname.includes(d));
             
-            // Function to show blocked card (defined here so refresh can use it)
+            // Function to show blocked card (uses currentUrl for dynamic updates)
             function showBlockedCard() {
+                let displayUrl;
+                try {
+                    displayUrl = new URL(currentUrl);
+                } catch (e) {
+                    displayUrl = urlObj;
+                }
+                const hostname = displayUrl.hostname || 'unknown';
+                const fullUrl = currentUrl || url;
+                
                 blocked.innerHTML = `
                     <div style="text-align: center; padding: 40px 20px;">
-                        <img src="https://www.google.com/s2/favicons?domain=${urlObj.hostname}&sz=64" style="width: 48px; height: 48px; border-radius: 10px; margin-bottom: 16px; opacity: 0.8;" onerror="this.style.display='none'">
-                        <div style="font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 6px;">${urlObj.hostname}</div>
+                        <img src="https://www.google.com/s2/favicons?domain=${hostname}&sz=64" style="width: 48px; height: 48px; border-radius: 10px; margin-bottom: 16px; opacity: 0.8;" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><polygon points=%2250,5 61,40 98,40 68,62 79,97 50,75 21,97 32,62 2,40 39,40%22 fill=%22white%22/></svg>'">
+                        <div style="font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 6px;">${hostname}</div>
                         <div style="font-size: 11px; color: var(--text-dim); margin-bottom: 20px;">This site blocks embedded viewing</div>
                         <button onclick="document.getElementById('${widgetId}-popup').click()" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; background: linear-gradient(135deg, #8B5CF6, #6366F1); border: none; border-radius: 10px; color: white; font-size: 12px; font-weight: 500; cursor: pointer;">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
                             Open as Popup
                         </button>
-                        <button onclick="window.open('${url}', '_blank')" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: var(--text); font-size: 12px; font-weight: 500; cursor: pointer; margin-left: 8px;">
+                        <button onclick="window.open('${fullUrl}', '_blank')" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: var(--text); font-size: 12px; font-weight: 500; cursor: pointer; margin-left: 8px;">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
                             New Tab
                         </button>
@@ -10237,6 +10370,9 @@
                 blocked.style.display = 'flex';
                 browser.style.display = 'none';
                 loading.style.display = 'none';
+                
+                // Also update header favicon
+                faviconEl.src = `https://www.google.com/s2/favicons?domain=${hostname}&sz=32`;
             }
             
             // REFRESH BUTTON
