@@ -139,6 +139,26 @@
             left: 44%;
             cursor: grab;
         }
+        .zoom-tooltip {
+            position: absolute;
+            bottom: 18px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.85);
+            color: white;
+            font-size: 10px;
+            font-weight: 600;
+            padding: 3px 6px;
+            border-radius: 4px;
+            white-space: nowrap;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.15s;
+        }
+        .zoom-handle:hover .zoom-tooltip,
+        .zoom-handle.dragging .zoom-tooltip {
+            opacity: 1;
+        }
         .zoom-handle:active { cursor: grabbing; }
 
         .workspace-controls {
@@ -431,6 +451,10 @@
 
         .widget.visible { display: flex; }
         .widget.dragging { box-shadow: 0 20px 60px rgba(0,0,0,0.6); cursor: grabbing; }
+        .widget.selected, .voice-note.selected, .sticky-note.selected, .browser-widget-instance.selected {
+            outline: 2px solid var(--admin-color) !important;
+            outline-offset: 2px;
+        }
 
         /* Browser Widget */
         .browser-widget {
@@ -4212,7 +4236,7 @@
             <span class="zoom-label">20%</span>
             <div class="zoom-track" onclick="handleZoomSliderClick(event)">
                 <div class="zoom-track-fill" id="zoomTrackFill"></div>
-                <div class="zoom-handle" id="zoomHandle"></div>
+                <div class="zoom-handle" id="zoomHandle"><span class="zoom-tooltip" id="zoomTooltip">100%</span></div>
             </div>
             <span class="zoom-label">200%</span>
         </div>
@@ -4502,7 +4526,7 @@
                     WORKSPACE_WIDTH += expandAmount;
                     content.style.width = WORKSPACE_WIDTH + 'px';
                     // Shift all elements to the right
-                    document.querySelectorAll('.widget, .voice-note, .admin-bar, .browser-widget-instance').forEach(el => {
+                    document.querySelectorAll('.widget, .voice-note, .sticky-note, .admin-bar, .browser-widget-instance').forEach(el => {
                         el.style.left = (el.offsetLeft + expandAmount) + 'px';
                     });
                     state.adminBarLeft += expandAmount;
@@ -4514,7 +4538,7 @@
                 if (workspace.scrollTop < expandThreshold && workspace.scrollTop > 0) {
                     WORKSPACE_HEIGHT += expandAmount;
                     content.style.height = WORKSPACE_HEIGHT + 'px';
-                    document.querySelectorAll('.widget, .voice-note, .admin-bar, .browser-widget-instance').forEach(el => {
+                    document.querySelectorAll('.widget, .voice-note, .sticky-note, .admin-bar, .browser-widget-instance').forEach(el => {
                         el.style.top = (el.offsetTop + expandAmount) + 'px';
                     });
                     state.adminBarTop += expandAmount;
@@ -4554,7 +4578,7 @@
                 const shift = WORKSPACE_PADDING - x;
                 WORKSPACE_WIDTH += shift;
                 // Shift all elements to the right
-                document.querySelectorAll('.widget, .voice-note, .admin-bar, .browser-widget').forEach(el => {
+                document.querySelectorAll('.widget, .voice-note, .sticky-note, .admin-bar, .browser-widget-instance').forEach(el => {
                     el.style.left = (el.offsetLeft + shift) + 'px';
                 });
                 state.adminBarLeft += shift;
@@ -4566,7 +4590,7 @@
             if (y < WORKSPACE_PADDING) {
                 const shift = WORKSPACE_PADDING - y;
                 WORKSPACE_HEIGHT += shift;
-                document.querySelectorAll('.widget, .voice-note, .admin-bar, .browser-widget').forEach(el => {
+                document.querySelectorAll('.widget, .voice-note, .sticky-note, .admin-bar, .browser-widget-instance').forEach(el => {
                     el.style.top = (el.offsetTop + shift) + 'px';
                 });
                 state.adminBarTop += shift;
@@ -4634,32 +4658,40 @@
             const content = document.getElementById('miniMapContent');
             const vp = document.getElementById('miniMapViewport');
             
-            // Use fixed scale based on total workspace size (not affected by zoom)
+            // Use fixed scale based on total workspace size
             const mapWidth = 180;
             const mapHeight = 100;
             const scaleX = mapWidth / WORKSPACE_WIDTH;
             const scaleY = mapHeight / WORKSPACE_HEIGHT;
             
             // Calculate visible area size (affected by zoom - smaller zoom = larger visible area)
-            const visibleWidth = window.innerWidth / state.zoom;
-            const visibleHeight = window.innerHeight / state.zoom;
+            const visibleWidth = ws.clientWidth / state.zoom;
+            const visibleHeight = ws.clientHeight / state.zoom;
             
-            // Viewport position based on scroll
+            // Viewport position based on scroll (scroll values are in zoomed coords, convert to workspace coords)
             const scrollX = ws.scrollLeft / state.zoom;
             const scrollY = ws.scrollTop / state.zoom;
             
-            // Update viewport
-            vp.style.width = Math.max(10, visibleWidth * scaleX) + 'px';
-            vp.style.height = Math.max(8, visibleHeight * scaleY) + 'px';
-            vp.style.left = Math.max(0, scrollX * scaleX) + 'px';
-            vp.style.top = Math.max(0, scrollY * scaleY) + 'px';
+            // Calculate viewport dimensions and position
+            const vpWidth = Math.min(mapWidth, Math.max(10, visibleWidth * scaleX));
+            const vpHeight = Math.min(mapHeight, Math.max(8, visibleHeight * scaleY));
+            const vpLeft = Math.max(0, Math.min(mapWidth - vpWidth, scrollX * scaleX));
+            const vpTop = Math.max(0, Math.min(mapHeight - vpHeight, scrollY * scaleY));
             
-            // Update zoom slider
+            // Update viewport
+            vp.style.width = vpWidth + 'px';
+            vp.style.height = vpHeight + 'px';
+            vp.style.left = vpLeft + 'px';
+            vp.style.top = vpTop + 'px';
+            
+            // Update zoom slider and tooltip
             const zoomPercent = ((state.zoom - 0.2) / (2.0 - 0.2)) * 100;
             const zoomFill = document.getElementById('zoomTrackFill');
             const zoomHandle = document.getElementById('zoomHandle');
+            const zoomTooltip = document.getElementById('zoomTooltip');
             if (zoomFill) zoomFill.style.width = zoomPercent + '%';
             if (zoomHandle) zoomHandle.style.left = zoomPercent + '%';
+            if (zoomTooltip) zoomTooltip.textContent = Math.round(state.zoom * 100) + '%';
             
             // Remove old widget indicators
             content.querySelectorAll('.mini-map-widget').forEach(w => w.remove());
@@ -5193,7 +5225,22 @@
 
         function startWidgetDrag(e, widgetId) {
             e.stopPropagation();
-            draggedWidget = document.getElementById(widgetId);
+            
+            const widget = document.getElementById(widgetId);
+            
+            // Shift+click for multi-selection
+            if (e.shiftKey) {
+                toggleSelection(widget, true);
+                return;
+            }
+            
+            // If this widget is selected and there are multiple selections, let multi-drag handle it
+            if (selectedElements.has(widget) && selectedElements.size > 1) {
+                return;
+            }
+            
+            clearAllSelections();
+            draggedWidget = widget;
             bringToFront(widgetId);
             draggedWidget.classList.add('dragging');
             hasDragged = false;
@@ -5220,13 +5267,38 @@
             document.removeEventListener('mouseup', stopWidgetDrag);
         }
 
+        // Multi-selection state
+        let selectedElements = new Set();
+        
+        function toggleSelection(el, addToSelection = false) {
+            if (addToSelection) {
+                if (selectedElements.has(el)) {
+                    selectedElements.delete(el);
+                    el.classList.remove('selected');
+                } else {
+                    selectedElements.add(el);
+                    el.classList.add('selected');
+                }
+            } else {
+                // Clear all selections and select only this one
+                clearAllSelections();
+                selectedElements.add(el);
+                el.classList.add('selected');
+            }
+        }
+        
+        function clearAllSelections() {
+            selectedElements.forEach(el => el.classList.remove('selected'));
+            selectedElements.clear();
+        }
+
         function initDraggable() {
             state.voiceNotes.forEach(id => makeDraggable(document.getElementById(id)));
 
             const bar = document.getElementById('adminBar');
             let isDraggingBar = false, bsx, bsy, box, boy;
-            let elementOffsets = []; // Store ALL element positions relative to bar
             
+            // Admin bar moves ALONE - no linked widgets
             bar.addEventListener('mousedown', e => {
                 if (e.target.closest('.admin-sphere') || e.target.closest('button')) return;
                 isDraggingBar = true; 
@@ -5234,50 +5306,6 @@
                 bsy = e.clientY;
                 box = bar.offsetLeft; 
                 boy = bar.offsetTop;
-                
-                // Store relative positions of ALL elements in workspace
-                elementOffsets = [];
-                
-                // Get all widgets (including browser widgets using widget class)
-                document.querySelectorAll('.widget').forEach(w => {
-                    // Skip fullscreen widgets (they're attached to body)
-                    if (!w.classList.contains('fullscreen')) {
-                        elementOffsets.push({
-                            el: w,
-                            offsetX: w.offsetLeft - bar.offsetLeft,
-                            offsetY: w.offsetTop - bar.offsetTop
-                        });
-                    }
-                });
-                
-                // Get all voice notes
-                document.querySelectorAll('.voice-note').forEach(w => {
-                    elementOffsets.push({
-                        el: w,
-                        offsetX: w.offsetLeft - bar.offsetLeft,
-                        offsetY: w.offsetTop - bar.offsetTop
-                    });
-                });
-                
-                // Get all sticky notes
-                document.querySelectorAll('.sticky-note').forEach(w => {
-                    elementOffsets.push({
-                        el: w,
-                        offsetX: w.offsetLeft - bar.offsetLeft,
-                        offsetY: w.offsetTop - bar.offsetTop
-                    });
-                });
-                
-                // Get old-style browser widgets (if any)
-                document.querySelectorAll('.browser-widget:not(.widget)').forEach(w => {
-                    if (!w.classList.contains('fullscreen')) {
-                        elementOffsets.push({
-                            el: w,
-                            offsetX: w.offsetLeft - bar.offsetLeft,
-                            offsetY: w.offsetTop - bar.offsetTop
-                        });
-                    }
-                });
             });
             
             document.addEventListener('mousemove', e => {
@@ -5287,17 +5315,11 @@
                 const newLeft = box + deltaX;
                 const newTop = boy + deltaY;
                 
-                // Move bar
+                // Move ONLY the bar
                 bar.style.left = newLeft + 'px';
                 bar.style.top = newTop + 'px';
                 state.adminBarLeft = newLeft;
                 state.adminBarTop = newTop;
-                
-                // Move ALL elements maintaining their relative positions
-                elementOffsets.forEach(item => {
-                    item.el.style.left = (newLeft + item.offsetX) + 'px';
-                    item.el.style.top = (newTop + item.offsetY) + 'px';
-                });
                 
                 showMiniMap();
                 expandWorkspaceIfNeeded(newLeft, newTop, BAR_WIDTH, 48);
@@ -5306,11 +5328,67 @@
             document.addEventListener('mouseup', () => {
                 if (isDraggingBar) {
                     isDraggingBar = false;
-                    elementOffsets = [];
-                    // Update positions in database for browser widgets
-                    document.querySelectorAll('.browser-widget-instance').forEach(w => {
-                        updateBrowserWidgetPos(w.id, w.offsetLeft, w.offsetTop);
+                }
+            });
+            
+            // Multi-selection drag for selected elements
+            let isMultiDragging = false;
+            let multiDragStart = { x: 0, y: 0 };
+            let multiDragOffsets = [];
+            
+            document.addEventListener('mousedown', e => {
+                // Check if clicking on a selected element
+                const clickedElement = e.target.closest('.widget, .voice-note, .sticky-note, .browser-widget-instance');
+                if (clickedElement && selectedElements.has(clickedElement) && selectedElements.size > 1) {
+                    // Don't trigger if clicking buttons
+                    if (e.target.closest('button, input, textarea')) return;
+                    
+                    isMultiDragging = true;
+                    multiDragStart = { x: e.clientX, y: e.clientY };
+                    multiDragOffsets = [];
+                    
+                    selectedElements.forEach(el => {
+                        multiDragOffsets.push({
+                            el: el,
+                            startX: el.offsetLeft,
+                            startY: el.offsetTop
+                        });
                     });
+                    e.preventDefault();
+                }
+            });
+            
+            document.addEventListener('mousemove', e => {
+                if (!isMultiDragging) return;
+                
+                const deltaX = (e.clientX - multiDragStart.x) / state.zoom;
+                const deltaY = (e.clientY - multiDragStart.y) / state.zoom;
+                
+                multiDragOffsets.forEach(item => {
+                    item.el.style.left = (item.startX + deltaX) + 'px';
+                    item.el.style.top = (item.startY + deltaY) + 'px';
+                });
+                
+                showMiniMap();
+            });
+            
+            document.addEventListener('mouseup', () => {
+                if (isMultiDragging) {
+                    isMultiDragging = false;
+                    // Update positions in database for browser widgets
+                    multiDragOffsets.forEach(item => {
+                        if (item.el.classList.contains('browser-widget-instance')) {
+                            updateBrowserWidgetPos(item.el.id, item.el.offsetLeft, item.el.offsetTop);
+                        }
+                    });
+                    multiDragOffsets = [];
+                }
+            });
+            
+            // Click on workspace background to clear selection
+            document.getElementById('workspaceContent').addEventListener('click', e => {
+                if (e.target.id === 'workspaceContent') {
+                    clearAllSelections();
                 }
             });
         }
@@ -5319,8 +5397,23 @@
             let isDragging = false, sx, sy, ox, oy;
             el.addEventListener('mousedown', e => {
                 if (e.target.closest('button') || e.button === 2) return;
-                isDragging = true; sx = e.clientX; sy = e.clientY;
-                ox = el.offsetLeft; oy = el.offsetTop;
+                
+                // Shift+click for multi-selection
+                if (e.shiftKey) {
+                    toggleSelection(el, true);
+                    e.preventDefault();
+                    return;
+                }
+                
+                // If not selected or only one selected, start normal drag
+                if (!selectedElements.has(el) || selectedElements.size <= 1) {
+                    clearAllSelections();
+                    isDragging = true; 
+                    sx = e.clientX; 
+                    sy = e.clientY;
+                    ox = el.offsetLeft; 
+                    oy = el.offsetTop;
+                }
             });
             document.addEventListener('mousemove', e => {
                 if (!isDragging) return;
@@ -8720,6 +8813,19 @@
             note.addEventListener('mousedown', (e) => {
                 if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.closest('.sticky-note-delete')) return;
                 
+                // Shift+click for multi-selection
+                if (e.shiftKey) {
+                    toggleSelection(note, true);
+                    e.preventDefault();
+                    return;
+                }
+                
+                // If this note is selected and there are multiple selections, let multi-drag handle it
+                if (selectedElements.has(note) && selectedElements.size > 1) {
+                    return;
+                }
+                
+                clearAllSelections();
                 isDragging = true;
                 startX = e.clientX;
                 startY = e.clientY;
@@ -9384,6 +9490,19 @@
             note.addEventListener('mousedown', (e) => {
                 if (e.target.closest('.voice-note-play, .voice-note-delete')) return;
                 
+                // Shift+click for multi-selection
+                if (e.shiftKey) {
+                    toggleSelection(note, true);
+                    e.preventDefault();
+                    return;
+                }
+                
+                // If this note is selected and there are multiple selections, let multi-drag handle it
+                if (selectedElements.has(note) && selectedElements.size > 1) {
+                    return;
+                }
+                
+                clearAllSelections();
                 isDragging = true;
                 startX = e.clientX;
                 startY = e.clientY;
@@ -9477,7 +9596,7 @@
         // Store popup window references
         const browserPopups = {};
         
-        function createBrowserWidget(url, savedData = null, customX = null, customY = null) {
+        function createBrowserWidget(url, savedData = null, customX = null, customY = null, focusUrlInput = false) {
             const widgetId = savedData?.id || 'browser-' + Date.now();
             const workspace = document.getElementById('workspace');
             const x = customX || savedData?.position_x || (workspace.scrollLeft + window.innerWidth / 2 - 175) / state.zoom;
@@ -9520,9 +9639,9 @@
                 <div class="widget-body" style="padding: 0; display: flex; flex-direction: column; height: 100%;">
                     <div class="browser-drag-header" id="${widgetId}-header" style="display: flex; align-items: center; padding: 10px 12px; gap: 8px; background: rgba(0,0,0,0.35); border-bottom: 1px solid rgba(255,255,255,0.08); cursor: grab; user-select: none;">
                         <img id="${widgetId}-favicon" src="${faviconUrl}" style="width: 16px; height: 16px; border-radius: 3px; flex-shrink: 0;" onerror="this.style.display='none'">
-                        <div id="${widgetId}-url-container" style="flex: 1; min-width: 0; position: relative;">
-                            <span id="${widgetId}-title" style="display: block; font-size: 11px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: text; padding: 2px 0;" title="Click to edit URL">${url}</span>
-                            <input id="${widgetId}-url-input" type="text" value="${url}" style="display: none; position: absolute; inset: 0; font-size: 11px; color: var(--text); background: rgba(0,0,0,0.6); border: 1px solid var(--admin-border); border-radius: 4px; padding: 2px 6px; outline: none; font-family: inherit; z-index: 10;">
+                        <div id="${widgetId}-url-container" style="flex: 1; min-width: 0; position: relative; min-height: 20px;">
+                            <span id="${widgetId}-title" style="display: block; font-size: 11px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: text; padding: 4px 0; line-height: 1.4;" title="Click to edit URL">${url}</span>
+                            <input id="${widgetId}-url-input" type="text" value="${url}" style="display: none; position: absolute; left: -4px; right: -4px; top: 50%; transform: translateY(-50%); font-size: 11px; color: #fff; background: rgba(15,15,25,0.98); border: 1px solid var(--admin-border); border-radius: 6px; padding: 6px 10px; outline: none; font-family: inherit; z-index: 10; width: calc(100% + 8px); box-sizing: border-box;">
                         </div>
                         <button id="${widgetId}-back" class="browser-header-btn browser-nav-btn" title="Back" disabled>
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
@@ -9950,7 +10069,14 @@
                 showToast('Browser closed');
             });
             
-            widget.addEventListener('mousedown', () => bringToFront(widgetId));
+            widget.addEventListener('mousedown', (e) => {
+                bringToFront(widgetId);
+                // Shift+click for multi-selection
+                if (e.shiftKey && !e.target.closest('button, input, textarea')) {
+                    toggleSelection(widget, true);
+                    e.preventDefault();
+                }
+            });
             
             browserWidgets.push({ id: widgetId, url: url, position_x: x, position_y: y });
             
@@ -9961,6 +10087,23 @@
             
             bringToFront(widgetId);
             expandWorkspaceIfNeeded(x, y, savedWidth, savedHeight);
+            
+            // If requested, focus the URL input for editing
+            if (focusUrlInput) {
+                setTimeout(() => {
+                    const urlInput = document.getElementById(widgetId + '-url-input');
+                    const titleEl = document.getElementById(widgetId + '-title');
+                    if (urlInput && titleEl) {
+                        titleEl.style.display = 'none';
+                        urlInput.value = '';
+                        urlInput.style.display = 'block';
+                        urlInput.focus();
+                        urlInput.placeholder = 'Enter URL...';
+                    }
+                }, 100);
+            }
+            
+            return widgetId;
         }
         
         // Electron-specific browser widget (with webview)
@@ -10180,15 +10323,9 @@
             // Click add browser to show URL prompt
             addBrowserBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                const url = prompt('Enter website URL:', 'https://');
-                if (url && url !== 'https://') {
-                    let finalUrl = url.trim();
-                    if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
-                        finalUrl = 'https://' + finalUrl;
-                    }
-                    createBrowserWidget(finalUrl);
-                    showToast('Browser widget added');
-                }
+                // Create widget immediately with placeholder URL, then focus URL input
+                const widgetId = createBrowserWidget('https://example.com', null, null, null, true);
+                showToast('Enter URL in the widget');
             });
             
             // Click outside to close
