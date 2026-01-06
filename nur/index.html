@@ -4621,9 +4621,9 @@
         // Browser widgets storage
         let browserWidgets = [];
 
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             initDraggable();
-            positionElements();
+            await positionElements();
             centerView();
             document.getElementById('workspace').addEventListener('scroll', showMiniMap);
             
@@ -4732,9 +4732,61 @@
             }
         }
 
-        function positionElements() {
-            // Load saved positions from localStorage
-            const savedPositions = JSON.parse(localStorage.getItem('nur_widget_positions') || '{}');
+        // Load widget positions from database
+        async function loadWidgetPositions() {
+            try {
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/widget_positions?select=*`, {
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const positions = await response.json();
+                    return positions.reduce((acc, p) => {
+                        acc[p.id] = p;
+                        return acc;
+                    }, {});
+                }
+            } catch (error) {
+                console.error('Load positions error:', error);
+            }
+            return {};
+        }
+        
+        // Save widget position to database
+        async function saveWidgetPosition(id, x, y, width = null, height = null, type = 'main') {
+            const posX = parseInt(x) || 0;
+            const posY = parseInt(y) || 0;
+            
+            try {
+                await fetch(`${SUPABASE_URL}/rest/v1/widget_positions`, {
+                    method: 'POST',
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                        'Content-Type': 'application/json',
+                        'Prefer': 'resolution=merge-duplicates'
+                    },
+                    body: JSON.stringify({
+                        id: id,
+                        widget_type: type,
+                        position_x: posX,
+                        position_y: posY,
+                        width: width ? parseInt(width) : null,
+                        height: height ? parseInt(height) : null,
+                        updated_at: new Date().toISOString()
+                    })
+                });
+            } catch (error) {
+                console.error('Save position error:', error);
+            }
+        }
+        
+        async function positionElements() {
+            // Load saved positions from database
+            const savedPositions = await loadWidgetPositions();
             
             // Default center position
             const defaultCenterX = WORKSPACE_WIDTH / 2;
@@ -4742,8 +4794,8 @@
 
             const bar = document.getElementById('adminBar');
             if (savedPositions.adminBar) {
-                state.adminBarLeft = savedPositions.adminBar.x;
-                state.adminBarTop = savedPositions.adminBar.y;
+                state.adminBarLeft = savedPositions.adminBar.position_x;
+                state.adminBarTop = savedPositions.adminBar.position_y;
             } else {
                 state.adminBarLeft = defaultCenterX - BAR_WIDTH / 2;
                 state.adminBarTop = defaultCenterY;
@@ -4759,36 +4811,38 @@
             const startX = state.adminBarLeft;
 
             const defaultWidgets = [
-                { id: 'widgetTasks', x: 0, y: 0 },
-                { id: 'widgetCalendar', x: 470, y: 0 },
-                { id: 'widgetEmail', x: 940, y: 0 },
-                { id: 'widgetChat', x: 470, y: 540 }
+                { id: 'widgetTasks', x: 0, y: 0, w: 450, h: 520 },
+                { id: 'widgetCalendar', x: 470, y: 0, w: 450, h: 520 },
+                { id: 'widgetEmail', x: 940, y: 0, w: 450, h: 900 },
+                { id: 'widgetChat', x: 470, y: 540, w: 450, h: 400 }
             ];
 
             defaultWidgets.forEach(w => {
                 const el = document.getElementById(w.id);
                 if (savedPositions[w.id]) {
-                    el.style.left = savedPositions[w.id].x + 'px';
-                    el.style.top = savedPositions[w.id].y + 'px';
+                    el.style.left = savedPositions[w.id].position_x + 'px';
+                    el.style.top = savedPositions[w.id].position_y + 'px';
+                    el.style.width = (savedPositions[w.id].width || w.w) + 'px';
+                    el.style.height = (savedPositions[w.id].height || w.h) + 'px';
                 } else {
                     el.style.left = (startX + w.x) + 'px';
                     el.style.top = (barBottom + w.y) + 'px';
+                    el.style.width = w.w + 'px';
+                    el.style.height = w.h + 'px';
+                    // Save default position to database
+                    saveWidgetPosition(w.id, startX + w.x, barBottom + w.y, w.w, w.h, 'main');
                 }
-                el.style.width = widgetSizes[w.id].width + 'px';
-                el.style.height = widgetSizes[w.id].height + 'px';
             });
+            
+            // Save admin bar default if not in database
+            if (!savedPositions.adminBar) {
+                saveWidgetPosition('adminBar', state.adminBarLeft, state.adminBarTop, BAR_WIDTH, 48, 'main');
+            }
             
             // Make existing voice notes draggable
             document.querySelectorAll('.voice-note').forEach(note => {
                 makeVoiceNoteDraggable(note);
             });
-        }
-        
-        // Save widget position to localStorage
-        function saveWidgetPosition(id, x, y) {
-            const saved = JSON.parse(localStorage.getItem('nur_widget_positions') || '{}');
-            saved[id] = { x: parseInt(x), y: parseInt(y) };
-            localStorage.setItem('nur_widget_positions', JSON.stringify(saved));
         }
 
         function centerView() {
@@ -9279,6 +9333,9 @@
                     },
                     body: JSON.stringify(noteData)
                 });
+                
+                // Also save to widget_positions table
+                saveWidgetPosition(noteId, x, y, 200, 200, 'sticky');
             } catch (error) {
                 console.error('Error saving sticky note:', error);
             }
@@ -9935,6 +9992,9 @@
                     },
                     body: JSON.stringify({ position_x: x, position_y: y })
                 });
+                
+                // Also save to widget_positions table
+                saveWidgetPosition(noteId, x, y, null, null, 'voice');
             } catch (error) {
                 console.error('Error updating voice note position:', error);
             }
@@ -10102,7 +10162,7 @@
             const x = savedData?.position_x || (contextMenuPosition.x + workspace.scrollLeft) / state.zoom;
             const y = savedData?.position_y || (contextMenuPosition.y + workspace.scrollTop) / state.zoom;
             const width = savedData?.width || 450;
-            const height = savedData?.height || (type === 'image' ? 'auto' : 520);
+            const height = savedData?.height || 520;
             
             // Convert blob to base64 for storage (if not already base64)
             let base64Data = savedData?.data || null;
@@ -10113,89 +10173,168 @@
             // Check if file is binary (DOCX, XLSX, etc.)
             const isBinaryDoc = filename.match(/\.(docx?|xlsx?|pptx?|odt|ods|odp|zip|rar|7z|gz|exe|dll|so|dmg)$/i);
             
+            // Get file extension and color
+            const ext = filename.split('.').pop().toUpperCase();
+            const iconColors = {
+                'PDF': '#E53935',
+                'DOC': '#4285f4', 'DOCX': '#4285f4',
+                'XLS': '#0f9d58', 'XLSX': '#0f9d58',
+                'PPT': '#db4437', 'PPTX': '#db4437',
+                'PNG': '#9C27B0', 'JPG': '#9C27B0', 'JPEG': '#9C27B0', 'GIF': '#9C27B0', 'WEBP': '#9C27B0',
+                'TXT': '#607D8B', 'MD': '#607D8B'
+            };
+            const iconColor = iconColors[ext] || '#8B5CF6';
+            
             const widget = document.createElement('div');
-            widget.className = 'widget file-widget visible';
+            widget.className = 'browser-widget-instance file-widget visible';
             widget.id = widgetId;
             widget.dataset.fileType = type;
             widget.dataset.filename = filename;
-            widget.style.cssText = `left: ${x}px; top: ${y}px; width: ${isBinaryDoc ? '280px' : width + 'px'}; height: ${height === 'auto' ? 'auto' : (isBinaryDoc ? 'auto' : height + 'px')}; min-height: 100px; z-index: ${++state.highestZIndex}; cursor: grab; border-radius: 16px; overflow: hidden; background: rgba(23,23,37,0.95); border: 1px solid rgba(255,255,255,0.1);`;
+            widget.dataset.isBrowser = 'false';
+            widget.style.cssText = `left: ${x}px; top: ${y}px; width: ${width}px; height: ${height}px; z-index: ${++state.highestZIndex};`;
             
-            // Delete button (small, top-right corner)
-            const deleteBtn = `<button class="file-widget-delete" onclick="deleteFileWidget('${widgetId}')" style="position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; border-radius: 50%; background: rgba(0,0,0,0.6); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s; z-index: 10;"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" style="width: 14px; height: 14px;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>`;
+            // Header with controls (like browser widget)
+            const headerHTML = `
+                <div class="browser-widget-header" style="cursor: grab;">
+                    <div class="browser-widget-favicon" style="background: ${iconColor};">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" style="width: 12px; height: 12px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    </div>
+                    <span class="browser-widget-title">${filename}</span>
+                    <div class="browser-widget-controls">
+                        ${type !== 'image' && base64Data ? `<button class="browser-widget-btn" onclick="event.stopPropagation(); openFileInNewTab('${widgetId}')" title="Open in new tab">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                        </button>` : ''}
+                        <button class="browser-widget-btn fullscreen-btn" onclick="event.stopPropagation(); toggleFileWidgetFullscreen('${widgetId}')" title="Fullscreen">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+                        </button>
+                        <button class="browser-widget-btn close" onclick="event.stopPropagation(); deleteFileWidget('${widgetId}')" title="Close">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            let contentHTML = '';
             
             if (type === 'image') {
                 const imgSrc = base64Data || URL.createObjectURL(blob);
-                widget.innerHTML = `
-                    ${deleteBtn}
-                    <img src="${imgSrc}" style="width: 100%; height: auto; display: block; border-radius: 16px;" draggable="false">
+                contentHTML = `
+                    <div class="widget-body" style="padding: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.3);">
+                        <img src="${imgSrc}" style="max-width: 100%; max-height: 100%; object-fit: contain;" draggable="false">
+                    </div>
                 `;
             } else if (type === 'pdf') {
+                // For PDFs, always show icon with preview option
                 const pdfSrc = base64Data || URL.createObjectURL(blob);
-                widget.style.height = height + 'px';
-                widget.innerHTML = `
-                    ${deleteBtn}
-                    <div style="padding: 8px 12px; background: rgba(0,0,0,0.3); font-size: 11px; color: var(--text-dim); display: flex; align-items: center; gap: 8px;">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                        <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${filename}</span>
+                contentHTML = `
+                    <div class="widget-body" style="padding: 0; position: relative;">
+                        <div class="pdf-loading" style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.2);">
+                            <div style="width: 64px; height: 80px; background: ${iconColor}; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 12px;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" style="width: 32px; height: 32px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                                <span style="font-size: 10px; color: white; font-weight: 700; margin-top: 4px;">${ext}</span>
+                            </div>
+                            <button onclick="loadPdfPreview('${widgetId}', '${pdfSrc.replace(/'/g, "\\'")}')" style="padding: 8px 16px; background: var(--admin-color); border: none; border-radius: 8px; color: white; font-size: 12px; cursor: pointer;">Load Preview</button>
+                            <a href="${pdfSrc}" download="${filename}" style="display: block; margin-top: 8px; font-size: 11px; color: var(--text-dim);">or Download</a>
+                        </div>
                     </div>
-                    <iframe src="${pdfSrc}" style="width: 100%; height: calc(100% - 36px); border: none; background: white;"></iframe>
                 `;
             } else if (isBinaryDoc) {
                 // Binary document - show file icon with download option
-                const ext = filename.split('.').pop().toUpperCase();
-                const iconColor = ext.includes('DOC') ? '#4285f4' : ext.includes('XLS') ? '#0f9d58' : ext.includes('PPT') ? '#db4437' : '#8B5CF6';
-                widget.innerHTML = `
-                    ${deleteBtn}
-                    <div style="padding: 20px; text-align: center;">
-                        <div style="width: 64px; height: 80px; margin: 0 auto 12px; background: ${iconColor}; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                contentHTML = `
+                    <div class="widget-body" style="display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.2);">
+                        <div style="width: 64px; height: 80px; background: ${iconColor}; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 12px;">
                             <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" style="width: 32px; height: 32px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                             <span style="font-size: 10px; color: white; font-weight: 700; margin-top: 4px;">${ext}</span>
                         </div>
-                        <div style="font-size: 12px; color: var(--text); word-break: break-word;">${filename}</div>
-                        <div style="font-size: 10px; color: var(--text-dim); margin-top: 4px;">Binary document</div>
-                        ${base64Data ? `<a href="${base64Data}" download="${filename}" style="display: inline-block; margin-top: 12px; padding: 6px 12px; background: rgba(255,255,255,0.1); border-radius: 6px; font-size: 11px; color: var(--admin-color); text-decoration: none;">Download</a>` : ''}
+                        <div style="font-size: 12px; color: var(--text); text-align: center; word-break: break-word; padding: 0 20px;">${filename}</div>
+                        ${base64Data ? `<a href="${base64Data}" download="${filename}" style="display: inline-block; margin-top: 12px; padding: 8px 16px; background: var(--admin-color); border-radius: 8px; font-size: 12px; color: white; text-decoration: none;">Download</a>` : ''}
                     </div>
                 `;
             } else {
-                // Text/doc file
+                // Text file
                 let textContent = '';
                 if (blob && !savedData) {
                     textContent = await blob.text();
                 } else if (savedData?.text_content) {
                     textContent = savedData.text_content;
                 }
-                widget.style.height = 'auto';
-                widget.innerHTML = `
-                    ${deleteBtn}
-                    <div style="padding: 8px 12px; background: rgba(0,0,0,0.3); font-size: 11px; color: var(--text-dim); display: flex; align-items: center; gap: 8px;">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                        <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${filename}</span>
-                    </div>
-                    <div style="padding: 12px; max-height: 400px; overflow-y: auto;">
-                        <pre style="margin: 0; font-size: 11px; color: var(--text); white-space: pre-wrap; word-break: break-word; font-family: monospace;">${escapeHtml(textContent)}</pre>
+                contentHTML = `
+                    <div class="widget-body" style="padding: 12px; overflow-y: auto;">
+                        <pre style="margin: 0; font-size: 11px; color: var(--text); white-space: pre-wrap; word-break: break-word; font-family: 'Monaco', 'Menlo', monospace;">${escapeHtml(textContent)}</pre>
                     </div>
                 `;
             }
             
-            // Show delete on hover
-            widget.addEventListener('mouseenter', () => {
-                widget.querySelector('.file-widget-delete').style.opacity = '1';
-            });
-            widget.addEventListener('mouseleave', () => {
-                widget.querySelector('.file-widget-delete').style.opacity = '0';
-            });
+            widget.innerHTML = headerHTML + contentHTML;
             
             content.appendChild(widget);
             makeFileWidgetDraggable(widget);
             
             // Save to database (only if new)
             if (!savedData) {
-                await saveFileWidgetToSupabase(widgetId, filename, type, base64Data, x, y, isBinaryDoc ? 280 : width, typeof height === 'number' ? height : 400, type === 'doc' && !isBinaryDoc ? (blob ? await blob.text() : '') : null);
+                await saveFileWidgetToSupabase(widgetId, filename, type, base64Data, x, y, width, height, type === 'doc' && !isBinaryDoc ? (blob ? await blob.text() : '') : null);
+                // Also save position
+                saveWidgetPosition(widgetId, x, y, width, height, 'file');
                 showToast(type === 'image' ? '📷 Image added' : type === 'pdf' ? '📄 PDF added' : '📎 File added');
             }
             
             showMiniMap();
             return widgetId;
+        }
+        
+        // Load PDF preview on demand (for large files)
+        function loadPdfPreview(widgetId, src) {
+            const widget = document.getElementById(widgetId);
+            if (!widget) return;
+            
+            const body = widget.querySelector('.widget-body');
+            body.innerHTML = `
+                <iframe src="${src}" style="width: 100%; height: 100%; border: none; background: white;"></iframe>
+            `;
+        }
+        
+        // Open file in new tab
+        function openFileInNewTab(widgetId) {
+            const widget = document.getElementById(widgetId);
+            if (!widget) return;
+            
+            const iframe = widget.querySelector('iframe');
+            if (iframe && iframe.src) {
+                window.open(iframe.src, '_blank');
+            }
+        }
+        
+        // Toggle file widget fullscreen
+        function toggleFileWidgetFullscreen(widgetId) {
+            const widget = document.getElementById(widgetId);
+            if (!widget) return;
+            
+            if (widget.classList.contains('expanded')) {
+                // Collapse
+                widget.classList.remove('expanded');
+                widget.style.width = widget.dataset.origWidth || '450px';
+                widget.style.height = widget.dataset.origHeight || '520px';
+                widget.style.left = widget.dataset.origX + 'px';
+                widget.style.top = widget.dataset.origY + 'px';
+            } else {
+                // Expand
+                widget.dataset.origWidth = widget.style.width;
+                widget.dataset.origHeight = widget.style.height;
+                widget.dataset.origX = parseInt(widget.style.left);
+                widget.dataset.origY = parseInt(widget.style.top);
+                
+                const workspace = document.getElementById('workspace');
+                const viewportWidth = workspace.clientWidth / state.zoom;
+                const viewportHeight = workspace.clientHeight / state.zoom;
+                const scrollX = workspace.scrollLeft / state.zoom;
+                const scrollY = workspace.scrollTop / state.zoom;
+                
+                widget.classList.add('expanded');
+                widget.style.width = Math.min(1200, viewportWidth * 0.9) + 'px';
+                widget.style.height = Math.min(900, viewportHeight * 0.9) + 'px';
+                widget.style.left = (scrollX + (viewportWidth - Math.min(1200, viewportWidth * 0.9)) / 2) + 'px';
+                widget.style.top = (scrollY + (viewportHeight - Math.min(900, viewportHeight * 0.9)) / 2) + 'px';
+            }
         }
         
         function escapeHtml(text) {
@@ -10307,6 +10446,7 @@
         }
         
         function updateFileWidgetPos(id, x, y) {
+            // Update file_widgets table
             fetch(`${SUPABASE_URL}/rest/v1/file_widgets?id=eq.${id}`, {
                 method: 'PATCH',
                 headers: {
@@ -10316,6 +10456,9 @@
                 },
                 body: JSON.stringify({ position_x: x, position_y: y })
             }).catch(err => console.error('Update file widget pos error:', err));
+            
+            // Also save to widget_positions table
+            saveWidgetPosition(id, x, y, null, null, 'file');
         }
         
         async function deleteFileWidget(id) {
@@ -10988,6 +11131,9 @@
                 },
                 body: JSON.stringify({ position_x: x, position_y: y })
             }).catch(err => console.error('Position update error:', err));
+            
+            // Also save to widget_positions table
+            saveWidgetPosition(widgetId, x, y, null, null, 'browser');
         }
         
         function updateBrowserWidgetSize(widgetId, width, height) {
