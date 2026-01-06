@@ -471,6 +471,10 @@
         .browser-drag-header:hover .browser-header-btn { opacity: 1; }
         .browser-drag-header:hover .browser-nav-btn:disabled { opacity: 0.3; }
         
+        /* Browser web card hover */
+        .browser-web-card:hover { background: linear-gradient(145deg, rgba(40,42,54,0.98), rgba(25,27,35,0.98)) !important; transform: scale(1.01); }
+        .browser-web-card:hover div:last-child { color: rgba(255,255,255,0.35); }
+        
         /* Browser card mode (HTML version) */
         .browser-card-mode {
             width: 350px !important;
@@ -9533,10 +9537,19 @@
             // Store popup reference
             let popupWindow = null;
             
-            // Use webview for Electron, iframe for HTML
+            // Use webview for Electron, clickable card for web (iframes are blocked by most sites)
             const browserElement = isElectron 
                 ? `<webview id="${widgetId}-browser" src="${url}" partition="persist:browser" allowpopups useragent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" style="width: 100%; height: 100%; border: none;"></webview>`
-                : `<iframe id="${widgetId}-browser" src="${url}" style="width: 100%; height: 100%; border: none;" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox" allow="microphone; camera; geolocation"></iframe>`;
+                : `<div id="${widgetId}-browser" class="browser-web-card" style="width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(145deg, rgba(30,32,44,0.98), rgba(20,22,30,0.98)); cursor: pointer; transition: all 0.2s;" onclick="window.open('${url}', '_blank')">
+                    <img src="https://www.google.com/s2/favicons?domain=${urlObj.hostname}&sz=128" style="width: 64px; height: 64px; border-radius: 12px; margin-bottom: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.4);" onerror="this.style.display='none'">
+                    <div style="font-size: 15px; font-weight: 600; color: rgba(255,255,255,0.9); margin-bottom: 6px;">${urlObj.hostname}</div>
+                    <div style="font-size: 11px; color: rgba(255,255,255,0.4); margin-bottom: 20px; max-width: 80%; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${url}</div>
+                    <div style="display: flex; align-items: center; gap: 8px; padding: 10px 20px; background: rgba(78,180,249,0.15); border: 1px solid rgba(78,180,249,0.3); border-radius: 8px; color: #4EB4F9; font-size: 13px; font-weight: 500;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                        Open in New Tab
+                    </div>
+                    <div style="font-size: 10px; color: rgba(255,255,255,0.25); margin-top: 12px;">Sites block iframe embedding for security</div>
+                </div>`;
             
             widget.innerHTML = `
                 <div class="widget-body" style="padding: 0; display: flex; flex-direction: column; height: 100%;">
@@ -9777,6 +9790,12 @@
             
             // Fallback hide loading
             setTimeout(() => { loading.style.display = 'none'; initialLoadDone = true; }, 2000);
+            
+            // For web version, hide loading immediately since we show a card
+            if (!isElectron) {
+                loading.style.display = 'none';
+                blocked.style.display = 'none';
+            }
             
             // DRAG
             let isDragging = false;
