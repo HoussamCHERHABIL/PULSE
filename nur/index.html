@@ -9635,7 +9635,7 @@
                             browser.src = newUrl;
                         }
                         titleEl.textContent = newUrl;
-                        loading.style.display = 'flex';
+                        if (isElectron) loading.style.display = 'flex';
                         blocked.style.display = 'none';
                         try {
                             const newUrlObj = new URL(newUrl);
@@ -9692,13 +9692,13 @@
             // REFRESH BUTTON
             refreshBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                loading.style.display = 'flex';
+                if (isElectron) loading.style.display = 'flex';
                 blocked.style.display = 'none';
                 initialLoadDone = false;
                 if (isElectron) {
                     browser.reload();
                 } else {
-                    browser.src = browser.src;
+                    window.open(url, '_blank');
                 }
             });
             
