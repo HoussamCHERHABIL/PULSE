@@ -61,10 +61,10 @@
 
         .workspace-content {
             position: relative;
-            width: 6000px;
-            height: 4000px;
+            width: 20000px;
+            height: 15000px;
             transform-origin: 0 0;
-            /* Grid on content - moves with zoom */
+            /* Grid on content - scales with zoom */
             background-image: 
                 linear-gradient(var(--grid-color) 1px, transparent 1px),
                 linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
@@ -4606,7 +4606,7 @@
         // ============================================
 
         // Dynamic workspace - starts at base size, expands as needed
-        let WORKSPACE_WIDTH = 6000, WORKSPACE_HEIGHT = 4000;
+        let WORKSPACE_WIDTH = 20000, WORKSPACE_HEIGHT = 15000;
         const BAR_WIDTH = 1390;
         const WORKSPACE_PADDING = 500; // Extra space when expanding
         
@@ -5160,10 +5160,7 @@
             // Hide/show sticky notes
             document.querySelectorAll('.sticky-note').forEach(n => n.classList.toggle('visible', state.isActive));
             
-            // Hide/show file widgets
-            document.querySelectorAll('.file-widget').forEach(f => f.classList.toggle('visible', state.isActive));
-            
-            // Hide/show browser widget instances
+            // Hide/show browser widget instances (includes file widgets that use browser-widget-instance class)
             document.querySelectorAll('.browser-widget-instance').forEach(b => {
                 b.style.display = state.isActive ? 'flex' : 'none';
             });
@@ -5834,8 +5831,10 @@
             const upHandler = () => {
                 if (isDragging) {
                     isDragging = false;
-                    // Save position
-                    saveWidgetPosition(el.id, el.style.left, el.style.top);
+                    // Save position with width and height for main widgets
+                    const width = parseInt(el.style.width) || null;
+                    const height = parseInt(el.style.height) || null;
+                    saveWidgetPosition(el.id, el.style.left, el.style.top, width, height, 'main');
                 }
             };
             
@@ -10903,45 +10902,48 @@
                     // Immediately show blocked card for known sites
                     showBlockedCard();
                 } else {
+                    // Track if load was successful
+                    let loadSuccessful = false;
+                    
                     // Try to load, detect if blocked
                     browser.addEventListener('load', () => {
                         loading.style.display = 'none';
                         initialLoadDone = true;
+                        loadSuccessful = true;
                         
-                        // Check if we can access iframe content (cross-origin = blocked)
-                        try {
-                            const doc = browser.contentDocument || browser.contentWindow?.document;
-                            if (doc && doc.body) {
-                                // Site loaded OK - show iframe
-                                browser.style.display = 'block';
-                            }
-                        } catch (err) {
-                            // Cross-origin error - site might be blocked or just cross-origin
-                            // For cross-origin sites that DO load, iframe will show content
-                            // So we keep the iframe visible
-                        }
+                        // For cross-origin sites, we can't access content
+                        // But if load event fired, iframe is working
+                        // Keep iframe visible - user can see if it works
+                        browser.style.display = 'block';
+                        blocked.style.display = 'none';
                     });
                     
                     browser.addEventListener('error', () => {
-                        showBlockedCard();
+                        if (!loadSuccessful) {
+                            showBlockedCard();
+                        }
                     });
                     
-                    // Fallback: after 3 seconds, check if iframe seems empty
+                    // Fallback: only show blocked if load didn't succeed after 5 seconds
                     setTimeout(() => {
                         loading.style.display = 'none';
                         initialLoadDone = true;
                         
-                        try {
-                            const doc = browser.contentDocument || browser.contentWindow?.document;
-                            // If we can access and it's empty, show blocked card
-                            if (doc && (!doc.body || doc.body.innerHTML === '')) {
-                                showBlockedCard();
+                        // Only show blocked card if load event never fired
+                        if (!loadSuccessful) {
+                            try {
+                                const doc = browser.contentDocument || browser.contentWindow?.document;
+                                // If we can access and it's completely empty, might be blocked
+                                if (doc && doc.body && doc.body.innerHTML === '') {
+                                    showBlockedCard();
+                                }
+                            } catch (err) {
+                                // Cross-origin - can't tell, but load event didn't fire
+                                // This likely means the site refuses to load in iframe
+                                // But don't auto-show blocked card - let user see if it works
                             }
-                        } catch (err) {
-                            // Cross-origin - can't tell, leave iframe visible
-                            // User can use popup if it's not working
                         }
-                    }, 3000);
+                    }, 5000);
                 }
             }
             
