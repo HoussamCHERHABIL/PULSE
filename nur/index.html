@@ -3043,19 +3043,29 @@
             background: rgba(255,255,255,0.3); 
         }
         
-        /* STT Quick Text - Chat Input Style */
-        .stt-controls {
+        /* Quick Tools - Bottom Right Controls */
+        .quick-tools {
             position: fixed;
             bottom: 24px;
             right: 24px;
             z-index: 99999;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 8px;
+        }
+        
+        /* Collapsed state - just buttons */
+        .quick-tools-buttons {
+            display: flex;
+            gap: 6px;
             opacity: 0.3;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .stt-controls:hover { opacity: 1; }
-        .stt-controls.expanded { opacity: 1; }
+        .quick-tools:hover .quick-tools-buttons { opacity: 1; }
+        .quick-tools.expanded .quick-tools-buttons { display: none; }
         
-        .stt-trigger {
+        .quick-tool-btn {
             width: 40px;
             height: 40px;
             border-radius: 12px;
@@ -3069,61 +3079,30 @@
             transition: all 0.2s;
             color: rgba(255,255,255,0.5);
         }
-        .stt-controls:hover .stt-trigger {
+        .quick-tools:hover .quick-tool-btn {
             background: rgba(32, 34, 49, 0.9);
             border-color: rgba(255, 255, 255, 0.1);
             color: rgba(255,255,255,0.9);
         }
-        .stt-trigger svg { width: 18px; height: 18px; stroke: currentColor; fill: none; }
-        .stt-controls.expanded .stt-trigger { display: none; }
+        .quick-tool-btn svg { width: 18px; height: 18px; stroke: currentColor; fill: none; }
         
-        .stt-panel {
+        /* Expanded STT input */
+        .stt-input-bar {
             display: none;
-            width: 320px;
+            width: 340px;
             background: rgba(23, 23, 37, 0.95);
             backdrop-filter: blur(30px);
-            border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 24px;
             box-shadow: 0 8px 40px rgba(0,0,0,0.4);
-            overflow: hidden;
         }
-        .stt-controls.expanded .stt-panel { display: block; }
-        
-        .stt-panel-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 12px 16px;
-            border-bottom: 1px solid rgba(255,255,255,0.06);
-        }
-        .stt-panel-title { font-size: 12px; font-weight: 500; color: var(--text-dim); }
-        .stt-panel-close {
-            width: 24px;
-            height: 24px;
-            border: none;
-            background: transparent;
-            border-radius: 6px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--text-dim);
-            transition: all 0.15s;
-        }
-        .stt-panel-close:hover { background: rgba(255,255,255,0.1); color: var(--text); }
-        .stt-panel-close svg { width: 14px; height: 14px; }
-        
-        .stt-input-area { padding: 12px; }
+        .quick-tools.expanded .stt-input-bar { display: block; }
         
         .stt-input-row {
             display: flex;
             align-items: flex-end;
             gap: 8px;
             padding: 6px;
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 24px;
-            transition: border-color 0.2s;
             position: relative;
         }
         .stt-input-row:focus-within { border-color: var(--admin-border); }
@@ -3143,9 +3122,10 @@
             padding: 8px 10px;
             resize: none;
             min-height: 36px;
-            max-height: 120px;
+            max-height: 150px;
+            overflow-y: auto;
         }
-        .stt-textarea::placeholder { color: rgba(255,255,255,0.25); }
+        .stt-textarea::placeholder { color: rgba(255,255,255,0.35); }
         .stt-input-row.recording .stt-textarea { opacity: 0; pointer-events: none; }
         
         .stt-waveform {
@@ -9542,7 +9522,7 @@
                         <img id="${widgetId}-favicon" src="${faviconUrl}" style="width: 16px; height: 16px; border-radius: 3px; flex-shrink: 0;" onerror="this.style.display='none'">
                         <div id="${widgetId}-url-container" style="flex: 1; min-width: 0; position: relative;">
                             <span id="${widgetId}-title" style="display: block; font-size: 11px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: text; padding: 2px 0;" title="Click to edit URL">${url}</span>
-                            <input id="${widgetId}-url-input" type="text" value="${url}" style="display: none; position: absolute; inset: 0; font-size: 11px; color: var(--text); background: transparent; border: none; padding: 2px 0; outline: none; font-family: inherit;">
+                            <input id="${widgetId}-url-input" type="text" value="${url}" style="display: none; position: absolute; inset: 0; font-size: 11px; color: var(--text); background: rgba(0,0,0,0.6); border: 1px solid var(--admin-border); border-radius: 4px; padding: 2px 6px; outline: none; font-family: inherit; z-index: 10;">
                         </div>
                         <button id="${widgetId}-back" class="browser-header-btn browser-nav-btn" title="Back" disabled>
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
@@ -10108,54 +10088,52 @@
             }
         });
         
-        // ==================== STT QUICK TEXT FEATURE ====================
-        // Chat Input Style - Same as chat widget mic/waveform
+        // ==================== QUICK TOOLS (STT + Add Browser) ====================
+        // Bottom right controls with mic and add browser widget buttons
         
-        (function initSTTQuickText() {
-            // Create STT Controls (like workspace-controls)
-            const sttControls = document.createElement('div');
-            sttControls.className = 'stt-controls';
-            sttControls.id = 'sttControls';
-            sttControls.innerHTML = `
-                <div class="stt-trigger" id="sttTrigger">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                        <line x1="12" y1="19" x2="12" y2="23"/>
-                        <line x1="8" y1="23" x2="16" y2="23"/>
-                    </svg>
-                </div>
-                <div class="stt-panel">
-                    <div class="stt-panel-header">
-                        <span class="stt-panel-title">Quick Speech-to-Text</span>
-                        <button class="stt-panel-close" id="sttClose">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <line x1="18" y1="6" x2="6" y2="18"/>
-                                <line x1="6" y1="6" x2="18" y2="18"/>
-                            </svg>
+        (function initQuickTools() {
+            // Create Quick Tools container
+            const quickTools = document.createElement('div');
+            quickTools.className = 'quick-tools';
+            quickTools.id = 'quickTools';
+            quickTools.innerHTML = `
+                <div class="stt-input-bar" id="sttInputBar">
+                    <div class="stt-input-row" id="sttInputRow">
+                        <div class="stt-input-wrap">
+                            <textarea class="stt-textarea" id="sttTextarea" placeholder="Quick Speech-to-Text" rows="1"></textarea>
+                            <div class="stt-waveform" id="sttWaveform">
+                                <div class="stt-wave-bars" id="sttWaveBars"></div>
+                                <div class="stt-timer" id="sttTimer">0:00</div>
+                            </div>
+                        </div>
+                        <button class="stt-action-btn" id="sttActionBtn">
+                            <div class="stt-icon-wrap">
+                                <span class="stt-btn-icon stt-mic-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></span>
+                                <span class="stt-btn-icon stt-stop-icon"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg></span>
+                                <span class="stt-btn-icon stt-copy-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></span>
+                            </div>
                         </button>
                     </div>
-                    <div class="stt-input-area">
-                        <div class="stt-input-row" id="sttInputRow">
-                            <div class="stt-input-wrap">
-                                <textarea class="stt-textarea" id="sttTextarea" placeholder="Tap mic to record..." rows="1" oninput="handleSttInput()"></textarea>
-                                <div class="stt-waveform" id="sttWaveform">
-                                    <div class="stt-wave-bars" id="sttWaveBars"></div>
-                                    <div class="stt-timer" id="sttTimer">0:00</div>
-                                </div>
-                            </div>
-                            <button class="stt-action-btn" id="sttActionBtn">
-                                <div class="stt-icon-wrap">
-                                    <span class="stt-btn-icon stt-mic-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></span>
-                                    <span class="stt-btn-icon stt-stop-icon"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg></span>
-                                    <span class="stt-btn-icon stt-copy-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></span>
-                                </div>
-                            </button>
-                        </div>
+                </div>
+                <div class="quick-tools-buttons">
+                    <div class="quick-tool-btn" id="addBrowserBtn" title="Add Browser Widget">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="2" y1="12" x2="22" y2="12"/>
+                            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                        </svg>
+                    </div>
+                    <div class="quick-tool-btn" id="sttTrigger" title="Quick Speech-to-Text">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                            <line x1="12" y1="19" x2="12" y2="23"/>
+                            <line x1="8" y1="23" x2="16" y2="23"/>
+                        </svg>
                     </div>
                 </div>
             `;
-            document.body.appendChild(sttControls);
+            document.body.appendChild(quickTools);
             
             // State
             let sttRecording = false;
@@ -10168,46 +10146,58 @@
             let sttTimerInterval = null;
             let sttRecordingStart = 0;
             
-            const STT_ELEVENLABS_KEY = ELEVENLABS_API_KEY; // Use same key as chat
-            
             // Elements
-            const trigger = document.getElementById('sttTrigger');
-            const closeBtn = document.getElementById('sttClose');
+            const sttTrigger = document.getElementById('sttTrigger');
+            const addBrowserBtn = document.getElementById('addBrowserBtn');
+            const inputBar = document.getElementById('sttInputBar');
             const inputRow = document.getElementById('sttInputRow');
             const textarea = document.getElementById('sttTextarea');
             const actionBtn = document.getElementById('sttActionBtn');
             const waveBars = document.getElementById('sttWaveBars');
             const timer = document.getElementById('sttTimer');
             
-            // Click trigger to expand
-            trigger.addEventListener('click', () => {
-                sttControls.classList.add('expanded');
-            });
-            
-            // Close panel
-            closeBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                sttControls.classList.remove('expanded');
-                if (sttRecording) stopSttRecording();
-            });
-            
-            // Click outside to close
-            document.addEventListener('click', (e) => {
-                if (sttControls.classList.contains('expanded') && !sttControls.contains(e.target)) {
-                    sttControls.classList.remove('expanded');
-                    if (sttRecording) stopSttRecording();
-                }
-            });
-            
-            // Handle textarea input - show copy button when has text
-            window.handleSttInput = function() {
-                if (textarea.value.trim()) {
+            // Auto-resize textarea like chat input
+            textarea.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = Math.min(this.scrollHeight, 150) + 'px';
+                
+                // Show copy button when has text
+                if (this.value.trim()) {
                     actionBtn.classList.add('has-text');
                     actionBtn.classList.remove('recording');
                 } else {
                     actionBtn.classList.remove('has-text');
                 }
-            };
+            });
+            
+            // Click mic trigger to expand STT
+            sttTrigger.addEventListener('click', (e) => {
+                e.stopPropagation();
+                quickTools.classList.add('expanded');
+                textarea.focus();
+            });
+            
+            // Click add browser to show URL prompt
+            addBrowserBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const url = prompt('Enter website URL:', 'https://');
+                if (url && url !== 'https://') {
+                    let finalUrl = url.trim();
+                    if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
+                        finalUrl = 'https://' + finalUrl;
+                    }
+                    createBrowserWidget(finalUrl);
+                    showToast('Browser widget added');
+                }
+            });
+            
+            // Click outside to close
+            document.addEventListener('click', (e) => {
+                if (quickTools.classList.contains('expanded') && !quickTools.contains(e.target)) {
+                    quickTools.classList.remove('expanded');
+                    if (sttRecording) stopSttRecording();
+                }
+            });
             
             // Action button click
             actionBtn.addEventListener('click', async (e) => {
@@ -10216,11 +10206,8 @@
                 // If has text, copy it
                 if (actionBtn.classList.contains('has-text')) {
                     navigator.clipboard.writeText(textarea.value).then(() => {
-                        // Flash green confirmation
                         actionBtn.style.background = 'linear-gradient(135deg, #10B981, #059669)';
-                        setTimeout(() => {
-                            actionBtn.style.background = '';
-                        }, 500);
+                        setTimeout(() => { actionBtn.style.background = ''; }, 500);
                     });
                     return;
                 }
@@ -10289,17 +10276,14 @@
                 const dataArray = new Uint8Array(sttAnalyser.frequencyBinCount);
                 sttAnalyser.getByteFrequencyData(dataArray);
                 
-                // Get average volume
                 const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
                 const height = Math.max(4, Math.min(28, (avg / 255) * 32));
                 
-                // Add new bar
                 const bar = document.createElement('div');
                 bar.className = 'stt-wave-bar';
                 bar.style.height = height + 'px';
                 waveBars.appendChild(bar);
                 
-                // Keep max 60 bars
                 while (waveBars.children.length > 60) {
                     waveBars.removeChild(waveBars.firstChild);
                 }
@@ -10338,7 +10322,6 @@
             }
             
             async function transcribeSttAudio(audioBlob) {
-                // Show processing state
                 textarea.placeholder = 'Processing...';
                 
                 try {
@@ -10365,15 +10348,18 @@
                         } else {
                             textarea.value = transcript.trim();
                         }
+                        // Trigger resize
+                        textarea.style.height = 'auto';
+                        textarea.style.height = Math.min(textarea.scrollHeight, 150) + 'px';
                         actionBtn.classList.add('has-text');
                     }
                     
-                    textarea.placeholder = 'Tap mic to record...';
+                    textarea.placeholder = 'Quick Speech-to-Text';
                 } catch (err) {
                     console.error('STT transcription error:', err);
-                    textarea.placeholder = 'Error. Tap mic to retry...';
+                    textarea.placeholder = 'Error. Try again...';
                     setTimeout(() => {
-                        textarea.placeholder = 'Tap mic to record...';
+                        textarea.placeholder = 'Quick Speech-to-Text';
                     }, 2000);
                 }
             }
