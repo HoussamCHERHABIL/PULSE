@@ -3307,17 +3307,24 @@
             display: flex;
             align-items: flex-end;
             gap: 8px;
-            padding: 6px;
+            padding: 8px 10px;
             position: relative;
-            background: transparent;
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            border-radius: 24px;
-            border: 1.5px solid transparent;
-            background-image: linear-gradient(rgba(0,0,0,0.01), rgba(0,0,0,0.01)), 
-                              linear-gradient(90deg, #06b6d4, #8b5cf6, #ec4899);
-            background-origin: border-box;
-            background-clip: padding-box, border-box;
+            background: rgba(0, 0, 0, 0.15);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            border-radius: 28px;
+        }
+        .stt-input-row::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 28px;
+            padding: 1.5px;
+            background: linear-gradient(90deg, #06b6d4, #8b5cf6, #ec4899);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
         }
         
         .stt-input-wrap { flex: 1; position: relative; min-height: 36px; display: flex; align-items: flex-end; }
