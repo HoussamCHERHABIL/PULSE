@@ -2779,6 +2779,124 @@
 
         .quick-action-chip:hover { background: var(--admin-bg); border-color: var(--admin-border); color: var(--admin-color); }
 
+        /* Chat Widget Working State - Glow Pulse Border Animation */
+        #widgetChat.working {
+            animation: chatBorderPulse 2.5s ease-in-out infinite;
+        }
+        @keyframes chatBorderPulse {
+            0%, 100% { 
+                border-color: rgba(236, 72, 153, 0.4);
+                box-shadow: 0 0 15px rgba(236, 72, 153, 0.12);
+            }
+            33% { 
+                border-color: rgba(139, 92, 246, 0.5);
+                box-shadow: 0 0 20px rgba(139, 92, 246, 0.15);
+            }
+            66% { 
+                border-color: rgba(6, 182, 212, 0.4);
+                box-shadow: 0 0 15px rgba(6, 182, 212, 0.12);
+            }
+        }
+
+        /* AI Response with Execution Steps (no bubble) */
+        .chat-msg.assistant.with-steps .chat-bubble {
+            background: transparent;
+            border: none;
+            padding: 8px 0;
+        }
+        .chat-msg.assistant.with-steps .chat-text {
+            font-size: 12px;
+            color: var(--text-dim);
+            margin-bottom: 10px;
+        }
+
+        /* Execution Steps - Segmented Progress */
+        .exec-steps {
+            padding-left: 16px;
+            margin-top: 4px;
+        }
+        .exec-step {
+            position: relative;
+            padding: 6px 0;
+        }
+        .exec-step::before {
+            content: '';
+            position: absolute;
+            left: -12px;
+            top: 11px;
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+        }
+        .exec-step::after {
+            content: '';
+            position: absolute;
+            left: -10.5px;
+            top: 19px;
+            width: 1.5px;
+            height: calc(100% - 6px);
+            border-radius: 1px;
+        }
+        .exec-step:last-child::after { display: none; }
+
+        .exec-step.done::before { background: #ec4899; }
+        .exec-step.done::after { background: linear-gradient(180deg, #ec4899, #a855f7); }
+        .exec-step.done:nth-child(2)::before { background: #a855f7; }
+        .exec-step.done:nth-child(2)::after { background: linear-gradient(180deg, #a855f7, #8b5cf6); }
+        .exec-step.done:nth-child(3)::before { background: #8b5cf6; }
+        .exec-step.done:nth-child(3)::after { background: linear-gradient(180deg, #8b5cf6, #06b6d4); }
+        .exec-step.done:nth-child(4)::before { background: #06b6d4; }
+
+        .exec-step.active::before { 
+            background: #8b5cf6;
+            box-shadow: 0 0 6px #8b5cf6;
+            animation: execStepPulse 1.5s ease-in-out infinite;
+        }
+        .exec-step.active::after { background: linear-gradient(180deg, rgba(139,92,246,0.4), rgba(6,182,212,0.1)); }
+        @keyframes execStepPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .exec-step.pending::before { background: rgba(6,182,212,0.2); }
+        .exec-step.pending::after { background: rgba(6,182,212,0.1); }
+
+        .exec-step .step-text {
+            font-size: 12px;
+            color: var(--text);
+        }
+        .exec-step.pending .step-text { color: rgba(255,255,255,0.35); }
+        .exec-step .step-meta {
+            font-size: 10px;
+            color: var(--text-dim);
+            margin-top: 2px;
+        }
+
+        /* Step Action Button */
+        .step-action-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 8px;
+            padding: 6px 12px;
+            background: linear-gradient(135deg, #8b5cf6, #6366f1);
+            border: none;
+            border-radius: 14px;
+            color: white;
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .step-action-btn:hover {
+            transform: scale(1.02);
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+        }
+        .step-action-btn svg {
+            width: 12px;
+            height: 12px;
+        }
+
         .chat-input-area { padding: 12px 16px 16px; }
 
         .input-row {
@@ -4375,6 +4493,7 @@
                         <div class="chat-quick-actions">
                             <span class="quick-action-chip" onclick="event.stopPropagation()">📅 Show schedule</span>
                             <span class="quick-action-chip" onclick="event.stopPropagation()">📧 Check emails</span>
+                            <span class="quick-action-chip" onclick="event.stopPropagation(); demoExecutionSteps()">⚡ Demo steps</span>
                         </div>
                     </div>
                     <div class="chat-msg user">
@@ -8919,6 +9038,131 @@
             container.scrollTop = container.scrollHeight;
         }
         
+        // ═══════════════════════════════════════════════════════════════
+        // CHAT WIDGET - WORKING STATE & EXECUTION STEPS
+        // ═══════════════════════════════════════════════════════════════
+        
+        // Set chat widget to working state (animated border)
+        function setChatWorking(isWorking) {
+            const widget = document.getElementById('widgetChat');
+            if (isWorking) {
+                widget.classList.add('working');
+            } else {
+                widget.classList.remove('working');
+            }
+        }
+        
+        // Add AI message with execution steps
+        function addChatMessageWithSteps(text, steps, quickActions = []) {
+            const container = document.getElementById('chatMessages');
+            const time = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+            const msg = document.createElement('div');
+            msg.className = 'chat-msg assistant with-steps';
+            msg.id = 'execMsg_' + Date.now();
+            
+            let stepsHtml = '<div class="exec-steps">';
+            steps.forEach((step, index) => {
+                const statusClass = step.status || 'pending';
+                const metaHtml = step.meta ? `<div class="step-meta">${escapeHtml(step.meta)}</div>` : '';
+                const actionHtml = step.action ? `
+                    <button class="step-action-btn" onclick="${step.action.onclick || ''}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            ${step.action.icon || '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>'}
+                        </svg>
+                        ${escapeHtml(step.action.label)}
+                    </button>` : '';
+                
+                stepsHtml += `
+                    <div class="exec-step ${statusClass}" data-step-index="${index}">
+                        <div class="step-text">${escapeHtml(step.text)}</div>
+                        ${metaHtml}
+                        ${actionHtml}
+                    </div>`;
+            });
+            stepsHtml += '</div>';
+            
+            let actionsHtml = '';
+            if (quickActions.length > 0) {
+                actionsHtml = '<div class="chat-quick-actions">';
+                quickActions.forEach(action => {
+                    actionsHtml += `<span class="quick-action-chip" onclick="event.stopPropagation(); ${action.onclick || ''}">${action.icon || ''} ${escapeHtml(action.label)}</span>`;
+                });
+                actionsHtml += '</div>';
+            }
+            
+            msg.innerHTML = `
+                <div class="chat-bubble">
+                    <div class="chat-text">${escapeHtml(text)}</div>
+                    ${stepsHtml}
+                </div>
+                <div class="chat-time">${time}</div>
+                ${actionsHtml}
+            `;
+            
+            container.appendChild(msg);
+            container.scrollTop = container.scrollHeight;
+            return msg.id;
+        }
+        
+        // Update step status in an existing message
+        function updateStepStatus(msgId, stepIndex, status, meta = null) {
+            const msg = document.getElementById(msgId);
+            if (!msg) return;
+            
+            const step = msg.querySelector(`.exec-step[data-step-index="${stepIndex}"]`);
+            if (!step) return;
+            
+            // Remove all status classes
+            step.classList.remove('done', 'active', 'pending');
+            step.classList.add(status);
+            
+            // Update meta if provided
+            if (meta) {
+                let metaEl = step.querySelector('.step-meta');
+                if (!metaEl) {
+                    metaEl = document.createElement('div');
+                    metaEl.className = 'step-meta';
+                    step.querySelector('.step-text').after(metaEl);
+                }
+                metaEl.textContent = meta;
+            }
+        }
+        
+        // Demo function to show execution steps in action
+        function demoExecutionSteps() {
+            setChatWorking(true);
+            
+            const msgId = addChatMessageWithSteps(
+                'Working on it:',
+                [
+                    { text: 'Research investor background', status: 'done', meta: 'Found portfolio info' },
+                    { text: 'Prepare presentation', status: 'active', meta: 'Updating Q4 metrics...' },
+                    { text: 'Draft introduction email', status: 'pending' },
+                    { text: 'Schedule follow-up', status: 'pending' }
+                ],
+                [
+                    { icon: '📊', label: 'Open slides', onclick: "showToast('Opening slides...')" }
+                ]
+            );
+            
+            // Simulate progress
+            setTimeout(() => {
+                updateStepStatus(msgId, 1, 'done', 'Slides updated');
+                updateStepStatus(msgId, 2, 'active', 'Drafting email...');
+            }, 3000);
+            
+            setTimeout(() => {
+                updateStepStatus(msgId, 2, 'done', 'Email drafted');
+                updateStepStatus(msgId, 3, 'active', 'Setting calendar...');
+            }, 6000);
+            
+            setTimeout(() => {
+                updateStepStatus(msgId, 3, 'done', 'Meeting scheduled');
+                setChatWorking(false);
+                showToast('✅ Task completed!');
+            }, 9000);
+        }
+
         // ═══════════════════════════════════════════════════════════════
         // CHAT ATTACHMENT MENU
         // ═══════════════════════════════════════════════════════════════
