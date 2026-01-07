@@ -10397,7 +10397,29 @@
         
         function initPasteHandler() {
             document.addEventListener('paste', async (e) => {
+                // Skip if typing in an input
                 if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
+                
+                // Check for pasted images first
+                const items = e.clipboardData?.items;
+                if (items) {
+                    for (const item of items) {
+                        if (item.type.startsWith('image/')) {
+                            e.preventDefault();
+                            const blob = item.getAsFile();
+                            if (blob) {
+                                // Set position to center of viewport
+                                const workspace = document.getElementById('workspace');
+                                contextMenuPosition.x = workspace.clientWidth / 2;
+                                contextMenuPosition.y = workspace.clientHeight / 2;
+                                await createFileWidget(blob, 'pasted-image.png', 'image');
+                            }
+                            return;
+                        }
+                    }
+                }
+                
+                // Check for pasted URL
                 const pastedText = (e.clipboardData || window.clipboardData).getData('text').trim();
                 if (isValidUrl(pastedText)) {
                     e.preventDefault();
@@ -10657,6 +10679,9 @@
             }
             
             widget.innerHTML = headerHTML + contentHTML;
+            
+            // Ensure widget is visible
+            widget.style.display = 'flex';
             
             content.appendChild(widget);
             makeFileWidgetDraggable(widget);
