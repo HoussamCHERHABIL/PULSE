@@ -920,39 +920,54 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            opacity: 0;
+            transition: all 0.2s;
         }
+        .task-mini:hover .task-checkbox { opacity: 1; }
+        .task-mini .task-checkbox.checked { opacity: 1; }
 
         .task-checkbox:hover { border-color: var(--admin-color); }
         .task-checkbox.checked { background: var(--green); border-color: var(--green); }
         .task-checkbox.checked::after { content: '✓'; font-size: 10px; color: white; }
-        .task-mini-text { flex: 1; font-size: 12px; color: rgba(255,255,255,0.7); }
-        .task-mini.completed .task-mini-text { text-decoration: line-through; color: rgba(255,255,255,0.3); }
+        .task-mini-text { flex: 1; font-size: 12px; color: rgba(255,255,255,0.7); transition: all 0.2s; margin-left: -26px; }
+        .task-mini:hover .task-mini-text { margin-left: 0; }
+        .task-mini .task-checkbox.checked + .task-mini-text { margin-left: 0; }
+        .task-mini.completed .task-mini-text { text-decoration: line-through; color: rgba(255,255,255,0.3); margin-left: 0; }
         .task-mini-value { font-size: 10px; color: var(--admin-color); opacity: 0.7; }
 
         /* Task Widget Tabs */
         .task-tabs-row { display: flex; gap: 4px; padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.06); align-items: center; }
-        .task-add-btn { width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; background: var(--admin-bg); border: none; border-radius: 6px; color: var(--admin-color); cursor: pointer; transition: all 0.2s ease; margin-right: 4px; }
+        .task-add-btn { width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; background: var(--admin-bg); border: none; border-radius: 6px; color: var(--admin-color); cursor: pointer; transition: all 0.2s ease; margin-right: 4px; flex-shrink: 0; }
         .task-add-btn:hover { background: rgba(78, 180, 249, 0.2); }
         .task-add-btn svg { width: 14px; height: 14px; }
+        .task-tabs-content { display: flex; gap: 4px; align-items: center; flex: 1; }
+        .task-tabs-row.input-mode .task-tabs-content { display: none; }
         .task-tab { padding: 5px 10px; font-size: 11px; font-weight: 500; color: var(--text-dim); background: transparent; border: none; border-radius: 6px; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; gap: 5px; }
         .task-tab:hover { color: var(--text); background: rgba(255,255,255,0.05); }
         .task-tab.active { color: var(--admin-color); background: var(--admin-bg); }
         .task-tab-count { font-size: 9px; padding: 1px 5px; background: rgba(255,255,255,0.08); border-radius: 8px; color: var(--text-dim); }
         .task-tab.active .task-tab-count { background: rgba(78, 180, 249, 0.2); color: var(--admin-color); }
-
-        /* Task Input Row */
-        .task-input-row { display: none; align-items: flex-end; gap: 8px; padding: 6px; background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; margin-bottom: 12px; position: relative; }
-        .task-input-row.visible { display: flex; }
-        .task-input-row:focus-within { border-color: var(--admin-border); }
-        .task-input-row.recording { border-color: var(--admin-border); }
-        .task-input-wrap { flex: 1; position: relative; min-height: 36px; display: flex; align-items: flex-end; }
-        .task-input { width: 100%; background: transparent; border: none; color: var(--text); font-family: inherit; font-size: 13px; line-height: 1.5; outline: none; padding: 8px 10px; resize: none; }
-        .task-input::placeholder { color: rgba(255,255,255,0.35); }
-        .task-input-row.recording .task-input { opacity: 0; pointer-events: none; }
-
-        /* Task Waveform */
-        .task-waveform { position: absolute; left: 0; right: 0; top: 0; bottom: 0; display: flex; align-items: center; justify-content: space-between; padding: 0; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
-        .task-input-row.recording .task-waveform { opacity: 1; }
+        
+        /* Inline Task Input in Tabs Bar */
+        .task-inline-input { display: none; flex: 1; align-items: center; gap: 6px; }
+        .task-tabs-row.input-mode .task-inline-input { display: flex; }
+        .task-inline-input input { flex: 1; background: transparent; border: none; color: var(--text); font-family: inherit; font-size: 12px; outline: none; height: 26px; }
+        .task-inline-input input::placeholder { color: rgba(255,255,255,0.4); }
+        .task-inline-mic { width: 26px; height: 26px; border-radius: 6px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #8B5CF6, #6366F1); color: white; flex-shrink: 0; transition: all 0.2s; position: relative; }
+        .task-inline-mic:hover { transform: scale(1.05); }
+        .task-inline-mic svg { width: 12px; height: 12px; }
+        .task-inline-mic.recording { background: linear-gradient(135deg, #EF4444, #DC2626); }
+        .task-inline-mic.processing::after { content: ''; position: absolute; width: 12px; height: 12px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: taskBtnSpin 0.8s linear infinite; }
+        .task-inline-mic.processing svg { opacity: 0; }
+        
+        /* Waveform in inline input */
+        .task-inline-waveform { display: none; flex: 1; align-items: center; justify-content: flex-end; gap: 2px; height: 26px; overflow: hidden; }
+        .task-tabs-row.input-mode.recording .task-inline-input input { display: none; }
+        .task-tabs-row.input-mode.recording .task-inline-waveform { display: flex; }
+        .task-inline-wave-bar { width: 2px; min-width: 2px; height: 4px; background: var(--admin-color); border-radius: 1px; flex-shrink: 0; }
+        .task-inline-timer { font-size: 10px; color: var(--text-dim); min-width: 32px; text-align: right; margin-left: 6px; font-variant-numeric: tabular-nums; }
+        /* Old Task Input Row - kept for compatibility but hidden */
+        .task-input-row { display: none !important; }
         .task-wave-bars { flex: 1; display: flex; align-items: center; justify-content: flex-end; gap: 2px; height: 100%; padding: 0 10px; overflow: hidden; }
         .task-wave-bar { width: 3px; min-width: 3px; height: 3px; border-radius: 2px; flex-shrink: 0; background: var(--admin-color); }
         .task-timer { font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text); min-width: 36px; text-align: right; opacity: 0.7; padding-right: 4px; background: linear-gradient(to right, transparent, rgba(0,0,0,0.3) 20%); padding-left: 12px; }
@@ -3929,31 +3944,29 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
                 <!-- Task Tabs Row -->
-                <div class="task-tabs-row">
+                <div class="task-tabs-row" id="taskTabsRow">
                     <button class="task-add-btn" onclick="event.stopPropagation(); toggleTaskInput()" title="Add Task">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                     </button>
-                    <button class="task-tab active" data-tab="all" onclick="event.stopPropagation(); switchTaskTab('all')">All <span class="task-tab-count" id="taskAllCount">0</span></button>
-                    <button class="task-tab" data-tab="focus" onclick="event.stopPropagation(); switchTaskTab('focus')">Focus <span class="task-tab-count" id="taskFocusCount">0</span></button>
-                    <button class="task-tab" data-tab="backlog" onclick="event.stopPropagation(); switchTaskTab('backlog')">Backlog <span class="task-tab-count" id="taskBacklogCount">0</span></button>
-                </div>
-                <div class="widget-body" id="taskWidgetBody" data-tab="all">
-                    <!-- Task Input Row -->
-                    <div class="task-input-row" id="taskInputRow">
-                        <div class="task-input-wrap">
-                            <input type="text" class="task-input" id="taskInput" placeholder="Add a task..." onkeydown="if(event.key==='Enter') { event.stopPropagation(); addTaskFromInput(); }">
-                            <div class="task-waveform">
-                                <div class="task-wave-bars" id="taskWaveBars"></div>
-                                <div class="task-timer" id="taskTimer">0:00</div>
-                            </div>
+                    <!-- Tabs (hidden when input mode) -->
+                    <div class="task-tabs-content">
+                        <button class="task-tab active" data-tab="all" onclick="event.stopPropagation(); switchTaskTab('all')">All <span class="task-tab-count" id="taskAllCount">0</span></button>
+                        <button class="task-tab" data-tab="focus" onclick="event.stopPropagation(); switchTaskTab('focus')">Focus <span class="task-tab-count" id="taskFocusCount">0</span></button>
+                        <button class="task-tab" data-tab="backlog" onclick="event.stopPropagation(); switchTaskTab('backlog')">Backlog <span class="task-tab-count" id="taskBacklogCount">0</span></button>
+                    </div>
+                    <!-- Inline Input (shown when input mode) -->
+                    <div class="task-inline-input">
+                        <input type="text" id="taskInlineInput" placeholder="Add a task..." onkeydown="handleTaskInputKey(event)" onblur="hideTaskInputDelayed()">
+                        <div class="task-inline-waveform" id="taskInlineWaveform">
+                            <div id="taskInlineWaveBars"></div>
+                            <span class="task-inline-timer" id="taskInlineTimer">0:00</span>
                         </div>
-                        <button class="task-action-btn" id="taskActionBtn" onclick="event.stopPropagation(); toggleTaskVoiceRecording()">
-                            <div class="icon-wrap">
-                                <div class="btn-icon mic-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg></div>
-                                <div class="btn-icon stop-icon"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg></div>
-                            </div>
+                        <button class="task-inline-mic" id="taskInlineMic" onclick="event.stopPropagation(); toggleTaskVoiceRecording()">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
                         </button>
                     </div>
+                </div>
+                <div class="widget-body" id="taskWidgetBody" data-tab="all">
                     <!-- Today's Focus Section -->
                     <div class="task-focus-section">
                         <div class="task-section-label">
@@ -9013,33 +9026,110 @@
             if (body) body.dataset.tab = tab;
         }
 
+        let taskInputHideTimeout = null;
+        
         function toggleTaskInput() {
-            const inputRow = document.getElementById('taskInputRow');
-            if (!inputRow) return;
-            if (inputRow.classList.contains('visible')) { inputRow.classList.remove('visible'); }
-            else { inputRow.classList.add('visible'); document.getElementById('taskInput')?.focus(); }
+            const tabsRow = document.getElementById('taskTabsRow');
+            if (!tabsRow) return;
+            
+            if (tabsRow.classList.contains('input-mode')) {
+                hideTaskInput();
+            } else {
+                tabsRow.classList.add('input-mode');
+                const input = document.getElementById('taskInlineInput');
+                if (input) {
+                    input.value = '';
+                    input.focus();
+                }
+            }
+        }
+        
+        function hideTaskInput() {
+            const tabsRow = document.getElementById('taskTabsRow');
+            if (tabsRow) {
+                tabsRow.classList.remove('input-mode', 'recording');
+            }
+            const mic = document.getElementById('taskInlineMic');
+            if (mic) mic.classList.remove('recording', 'processing');
+        }
+        
+        function hideTaskInputDelayed() {
+            // Small delay to allow click on mic button
+            taskInputHideTimeout = setTimeout(() => {
+                if (!taskRecording) {
+                    hideTaskInput();
+                }
+            }, 150);
+        }
+        
+        function handleTaskInputKey(event) {
+            event.stopPropagation();
+            if (event.key === 'Enter') {
+                addTaskFromInput();
+            } else if (event.key === 'Escape') {
+                hideTaskInput();
+            }
         }
 
         async function addTaskFromInput() {
-            const input = document.getElementById('taskInput');
+            const input = document.getElementById('taskInlineInput');
             if (!input) return;
             const text = input.value.trim();
-            if (!text) return;
+            if (!text) { hideTaskInput(); return; }
+            
             input.value = '';
-            document.getElementById('taskInputRow')?.classList.remove('visible');
+            hideTaskInput();
             showToast('⚡ Analyzing task...');
+            
             try {
-                const response = await fetch(N8N_TASK_WEBHOOK, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'create_task', input: text, timestamp: new Date().toISOString() }) });
-                if (response.ok) { showToast('✅ Task created'); setTimeout(() => loadTasksFromDB(), 1000); }
-                else { throw new Error('Webhook failed'); }
-            } catch (error) { await createBasicTask(text); }
+                const response = await fetch(N8N_TASK_WEBHOOK, { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify({ action: 'create_task', input: text, timestamp: new Date().toISOString() }) 
+                });
+                if (response.ok) { 
+                    showToast('✅ Task created'); 
+                    // Poll for task creation with multiple attempts
+                    let attempts = 0;
+                    const pollInterval = setInterval(async () => {
+                        attempts++;
+                        await loadTasksFromDB();
+                        if (attempts >= 5) clearInterval(pollInterval);
+                    }, 1500);
+                } else { 
+                    throw new Error('Webhook failed'); 
+                }
+            } catch (error) { 
+                await createBasicTask(text); 
+            }
         }
 
         async function createBasicTask(text) {
             try {
-                const response = await fetch(`${SUPABASE_URL}/rest/v1/tasks`, { method: 'POST', headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' }, body: JSON.stringify({ title: text.substring(0, 100), ris_score: 50, estimated_minutes: 30, potential_value: 0, category: 'operations', is_completed: false }) });
-                if (response.ok) { showToast('✅ Task added'); await loadTasksFromDB(); }
-            } catch (error) { showToast('❌ Failed to create task'); }
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/tasks`, { 
+                    method: 'POST', 
+                    headers: { 
+                        'apikey': SUPABASE_ANON_KEY, 
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 
+                        'Content-Type': 'application/json', 
+                        'Prefer': 'return=representation' 
+                    }, 
+                    body: JSON.stringify({ 
+                        title: text.substring(0, 100), 
+                        ris_score: 50, 
+                        estimated_minutes: 30, 
+                        potential_value: 0, 
+                        category: 'operations', 
+                        is_completed: false 
+                    }) 
+                });
+                if (response.ok) { 
+                    showToast('✅ Task added'); 
+                    await loadTasksFromDB(); 
+                }
+            } catch (error) { 
+                showToast('❌ Failed to create task'); 
+            }
         }
 
         async function toggleTaskComplete(taskId) {
@@ -9048,11 +9138,32 @@
             task.is_completed = !task.is_completed;
             renderTasksUI();
             try {
-                await fetch(`${SUPABASE_URL}/rest/v1/tasks?id=eq.${taskId}`, { method: 'PATCH', headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ is_completed: task.is_completed, status: task.is_completed ? 'completed' : 'pending' }) });
+                await fetch(`${SUPABASE_URL}/rest/v1/tasks?id=eq.${taskId}`, { 
+                    method: 'PATCH', 
+                    headers: { 
+                        'apikey': SUPABASE_ANON_KEY, 
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 
+                        'Content-Type': 'application/json' 
+                    }, 
+                    body: JSON.stringify({ 
+                        is_completed: task.is_completed, 
+                        status: task.is_completed ? 'completed' : 'pending' 
+                    }) 
+                });
             } catch (error) { console.error('Toggle task error:', error); }
         }
 
-        function toggleTaskVoiceRecording() { if (taskRecording) { stopTaskRecording(); } else { startTaskRecording(); } }
+        function toggleTaskVoiceRecording() { 
+            if (taskInputHideTimeout) {
+                clearTimeout(taskInputHideTimeout);
+                taskInputHideTimeout = null;
+            }
+            if (taskRecording) { 
+                stopTaskRecording(); 
+            } else { 
+                startTaskRecording(); 
+            } 
+        }
 
         async function startTaskRecording() {
             try {
@@ -9065,21 +9176,33 @@
                 taskMediaRecorder = new MediaRecorder(taskAudioStream, { mimeType: 'audio/webm' });
                 taskAudioChunks = [];
                 taskMediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) taskAudioChunks.push(e.data); };
-                taskMediaRecorder.onstop = async () => { const audioBlob = new Blob(taskAudioChunks, { type: 'audio/webm' }); await transcribeTaskAudio(audioBlob); };
+                taskMediaRecorder.onstop = async () => { 
+                    const audioBlob = new Blob(taskAudioChunks, { type: 'audio/webm' }); 
+                    await transcribeTaskAudio(audioBlob); 
+                };
                 taskMediaRecorder.start(100);
                 taskRecording = true;
                 taskRecordingStart = Date.now();
-                document.getElementById('taskInputRow')?.classList.add('recording');
-                document.getElementById('taskActionBtn')?.classList.add('recording');
-                const waveBars = document.getElementById('taskWaveBars');
+                
+                // Update UI for inline mode
+                const tabsRow = document.getElementById('taskTabsRow');
+                const mic = document.getElementById('taskInlineMic');
+                const waveBars = document.getElementById('taskInlineWaveBars');
+                
+                if (tabsRow) tabsRow.classList.add('recording');
+                if (mic) mic.classList.add('recording');
                 if (waveBars) waveBars.innerHTML = '';
+                
                 taskWaveformInterval = setInterval(updateTaskWaveform, 80);
-                const timer = document.getElementById('taskTimer');
+                
+                const timer = document.getElementById('taskInlineTimer');
                 taskTimerInterval = setInterval(() => {
                     const elapsed = Math.floor((Date.now() - taskRecordingStart) / 1000);
                     if (timer) timer.textContent = `${Math.floor(elapsed / 60)}:${(elapsed % 60).toString().padStart(2, '0')}`;
                 }, 1000);
-            } catch (error) { showToast('❌ Microphone access denied'); }
+            } catch (error) { 
+                showToast('❌ Microphone access denied'); 
+            }
         }
 
         function updateTaskWaveform() {
@@ -9087,14 +9210,19 @@
             const dataArray = new Uint8Array(taskAnalyser.frequencyBinCount);
             taskAnalyser.getByteFrequencyData(dataArray);
             const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
-            const height = Math.max(4, Math.min(28, (avg / 255) * 32));
-            const waveBars = document.getElementById('taskWaveBars');
+            const height = Math.max(4, Math.min(20, (avg / 255) * 24));
+            
+            const waveBars = document.getElementById('taskInlineWaveBars');
             if (!waveBars) return;
+            
             const bar = document.createElement('div');
-            bar.className = 'task-wave-bar';
+            bar.className = 'task-inline-wave-bar';
             bar.style.height = height + 'px';
             waveBars.appendChild(bar);
-            while (waveBars.children.length > 60) waveBars.removeChild(waveBars.firstChild);
+            
+            while (waveBars.children.length > 40) {
+                waveBars.removeChild(waveBars.firstChild);
+            }
         }
 
         function stopTaskRecording() {
@@ -9104,31 +9232,57 @@
             if (taskWaveformInterval) { clearInterval(taskWaveformInterval); taskWaveformInterval = null; }
             if (taskTimerInterval) { clearInterval(taskTimerInterval); taskTimerInterval = null; }
             taskRecording = false;
-            document.getElementById('taskInputRow')?.classList.remove('recording');
-            const actionBtn = document.getElementById('taskActionBtn');
-            if (actionBtn) { actionBtn.classList.remove('recording'); actionBtn.classList.add('processing'); }
-            const timer = document.getElementById('taskTimer');
+            
+            const tabsRow = document.getElementById('taskTabsRow');
+            const mic = document.getElementById('taskInlineMic');
+            const timer = document.getElementById('taskInlineTimer');
+            
+            if (tabsRow) tabsRow.classList.remove('recording');
+            if (mic) { mic.classList.remove('recording'); mic.classList.add('processing'); }
             if (timer) timer.textContent = '0:00';
         }
 
         async function transcribeTaskAudio(audioBlob) {
-            const input = document.getElementById('taskInput');
+            const input = document.getElementById('taskInlineInput');
+            const mic = document.getElementById('taskInlineMic');
+            
             if (input) input.placeholder = 'Processing...';
+            
             try {
                 const formData = new FormData();
                 formData.append('file', audioBlob, 'recording.webm');
                 formData.append('model_id', 'scribe_v1');
-                const response = await fetch('https://api.elevenlabs.io/v1/speech-to-text', { method: 'POST', headers: { 'xi-api-key': ELEVENLABS_API_KEY }, body: formData });
+                
+                const response = await fetch('https://api.elevenlabs.io/v1/speech-to-text', { 
+                    method: 'POST', 
+                    headers: { 'xi-api-key': ELEVENLABS_API_KEY }, 
+                    body: formData 
+                });
+                
                 if (!response.ok) throw new Error('Transcription failed');
+                
                 const result = await response.json();
-                const actionBtn = document.getElementById('taskActionBtn');
-                if (actionBtn) actionBtn.classList.remove('processing');
-                if (result.text?.trim() && input) { input.value = result.text.trim(); showToast('✅ Speech recognized'); }
-                else { showToast('No speech detected'); }
+                
+                if (mic) mic.classList.remove('processing');
+                
+                if (result.text?.trim() && input) { 
+                    input.value = result.text.trim(); 
+                    input.focus();
+                    showToast('✅ Speech recognized'); 
+                } else { 
+                    showToast('No speech detected'); 
+                    hideTaskInput();
+                }
+                
                 if (input) input.placeholder = 'Add a task...';
             } catch (err) {
-                document.getElementById('taskActionBtn')?.classList.remove('processing');
-                if (input) { input.placeholder = 'Error. Try again...'; setTimeout(() => { input.placeholder = 'Add a task...'; }, 2000); }
+                if (mic) mic.classList.remove('processing');
+                if (input) { 
+                    input.placeholder = 'Error. Try again...'; 
+                    setTimeout(() => { 
+                        input.placeholder = 'Add a task...'; 
+                    }, 2000); 
+                }
             }
         }
 
