@@ -822,6 +822,10 @@
         #widgetEmail.expanded .widget-drag-zone,
         #widgetEmail.fullscreen .widget-drag-zone { height: 45px; z-index: 4; }
         .widget-drag-zone:active { cursor: grabbing; }
+        
+        /* Task widget: drag zone should not interfere with tabs */
+        #widgetTasks .widget-drag-zone { height: 8px; }
+        #widgetTasks .task-tabs-row { position: relative; z-index: 10; }
 
         /* Fullscreen state */
         .widget.fullscreen {
@@ -953,7 +957,7 @@
         .task-tabs-row.input-mode .task-inline-input { display: flex; }
         .task-inline-input input { flex: 1; background: transparent; border: none; color: var(--text); font-family: inherit; font-size: 12px; outline: none; height: 26px; }
         .task-inline-input input::placeholder { color: rgba(255,255,255,0.4); }
-        .task-inline-mic { width: 26px; height: 26px; border-radius: 6px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #8B5CF6, #6366F1); color: white; flex-shrink: 0; transition: all 0.2s; position: relative; }
+        .task-inline-mic { width: 26px; height: 26px; border-radius: 50%; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #8B5CF6, #6366F1); color: white; flex-shrink: 0; transition: all 0.2s; position: relative; }
         .task-inline-mic:hover { transform: scale(1.05); }
         .task-inline-mic svg { width: 12px; height: 12px; }
         .task-inline-mic.recording { background: linear-gradient(135deg, #EF4444, #DC2626); }
@@ -964,8 +968,9 @@
         .task-inline-waveform { display: none; flex: 1; align-items: center; justify-content: flex-end; gap: 2px; height: 26px; overflow: hidden; }
         .task-tabs-row.input-mode.recording .task-inline-input input { display: none; }
         .task-tabs-row.input-mode.recording .task-inline-waveform { display: flex; }
-        .task-inline-wave-bar { width: 2px; min-width: 2px; height: 4px; background: var(--admin-color); border-radius: 1px; flex-shrink: 0; }
-        .task-inline-timer { font-size: 10px; color: var(--text-dim); min-width: 32px; text-align: right; margin-left: 6px; font-variant-numeric: tabular-nums; }
+        #taskInlineWaveBars { display: flex; align-items: center; justify-content: flex-end; gap: 2px; flex: 1; height: 100%; }
+        .task-inline-wave-bar { width: 3px; min-width: 3px; height: 4px; background: var(--admin-color); border-radius: 2px; flex-shrink: 0; transition: height 0.1s ease; }
+        .task-inline-timer { font-size: 11px; font-weight: 500; color: var(--text); min-width: 36px; text-align: right; margin-left: 8px; font-variant-numeric: tabular-nums; }
         /* Old Task Input Row - kept for compatibility but hidden */
         .task-input-row { display: none !important; }
         .task-wave-bars { flex: 1; display: flex; align-items: center; justify-content: flex-end; gap: 2px; height: 100%; padding: 0 10px; overflow: hidden; }
@@ -3304,6 +3309,11 @@
             gap: 8px;
             padding: 6px;
             position: relative;
+            background: rgba(20, 20, 30, 0.35);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 24px;
         }
         .stt-input-row:focus-within { border-color: var(--admin-border); }
         .stt-input-row.recording { border-color: var(--admin-border); }
