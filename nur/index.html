@@ -823,9 +823,40 @@
         #widgetEmail.fullscreen .widget-drag-zone { height: 45px; z-index: 4; }
         .widget-drag-zone:active { cursor: grabbing; }
         
-        /* Task widget: drag zone should not interfere with tabs */
-        #widgetTasks .widget-drag-zone { height: 8px; }
+        /* Task widget: drag zone at top, tabs clickable */
+        #widgetTasks .widget-drag-zone { height: 40px; z-index: 1; }
         #widgetTasks .task-tabs-row { position: relative; z-index: 10; }
+
+        /* Hide regular fullscreen btn when expanded/fullscreen for all widgets */
+        #widgetChat.expanded .widget-fullscreen-btn,
+        #widgetChat.fullscreen .widget-fullscreen-btn,
+        #widgetTasks.expanded .widget-fullscreen-btn,
+        #widgetTasks.fullscreen .widget-fullscreen-btn,
+        #widgetCalendar.expanded .widget-fullscreen-btn,
+        #widgetCalendar.fullscreen .widget-fullscreen-btn { display: none; }
+        
+        /* Internal fullscreen button for widgets (same style as email) */
+        .widget-internal-fullscreen-btn {
+            display: none;
+            width: 26px;
+            height: 26px;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            border: none;
+            border-radius: 6px;
+            color: var(--text-dim);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 20;
+        }
+        .widget.expanded .widget-internal-fullscreen-btn,
+        .widget.fullscreen .widget-internal-fullscreen-btn { display: flex; }
+        .widget-internal-fullscreen-btn:hover { background: rgba(255,255,255,0.08); color: var(--text); }
+        .widget-internal-fullscreen-btn svg { width: 14px; height: 14px; }
 
         /* Fullscreen state */
         .widget.fullscreen {
@@ -4075,6 +4106,9 @@
                 <button class="widget-close-btn" onclick="collapseWidget(event, 'widgetTasks')">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
+                <button class="widget-internal-fullscreen-btn" onclick="event.stopPropagation(); toggleFullscreen(event, 'widgetTasks')" title="Toggle fullscreen">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+                </button>
                 <!-- Task Tabs Row -->
                 <div class="task-tabs-row" id="taskTabsRow">
                     <button class="task-add-btn" onclick="event.stopPropagation(); toggleTaskInput()" title="Add Task">
@@ -4128,6 +4162,9 @@
                 </button>
                 <button class="widget-close-btn" onclick="collapseWidget(event, 'widgetCalendar')">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+                <button class="widget-internal-fullscreen-btn" onclick="event.stopPropagation(); toggleFullscreen(event, 'widgetCalendar')" title="Toggle fullscreen">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
                 </button>
                 <div class="widget-body">
                     <div class="calendar-header">
@@ -4485,6 +4522,9 @@
                 </button>
                 <button class="widget-close-btn" onclick="collapseWidget(event, 'widgetChat')">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+                <button class="widget-internal-fullscreen-btn" onclick="event.stopPropagation(); toggleFullscreen(event, 'widgetChat')" title="Toggle fullscreen">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
                 </button>
                 <div class="chat-messages" id="chatMessages">
                     <div class="chat-msg assistant">
