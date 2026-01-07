@@ -3309,14 +3309,51 @@
             gap: 8px;
             padding: 6px;
             position: relative;
-            background: rgba(20, 20, 30, 0.35);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            border: 1px solid rgba(255,255,255,0.08);
+            background: rgba(10, 10, 20, 0.25);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
             border-radius: 24px;
+            border: none;
         }
-        .stt-input-row:focus-within { border-color: var(--admin-border); }
-        .stt-input-row.recording { border-color: var(--admin-border); }
+        .stt-input-row::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 24px;
+            padding: 1px;
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.4), rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.2), rgba(99, 102, 241, 0.4));
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+        }
+        .stt-input-row::after {
+            content: '';
+            position: absolute;
+            inset: -1px;
+            border-radius: 25px;
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), transparent, rgba(99, 102, 241, 0.15));
+            filter: blur(4px);
+            z-index: -1;
+            pointer-events: none;
+        }
+        .stt-input-row:focus-within::before { 
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.6), rgba(99, 102, 241, 0.3), rgba(139, 92, 246, 0.4), rgba(99, 102, 241, 0.6));
+        }
+        .stt-input-row:focus-within::after {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.25), transparent, rgba(99, 102, 241, 0.25));
+        }
+        .stt-input-row.recording::before { 
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.6), rgba(220, 38, 38, 0.3), rgba(239, 68, 68, 0.4), rgba(220, 38, 38, 0.6));
+            animation: sttBorderPulse 1.5s ease-in-out infinite;
+        }
+        .stt-input-row.recording::after {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.3), transparent, rgba(220, 38, 38, 0.3));
+        }
+        @keyframes sttBorderPulse {
+            0%, 100% { opacity: 0.7; }
+            50% { opacity: 1; }
+        }
         
         .stt-input-wrap { flex: 1; position: relative; min-height: 36px; display: flex; align-items: flex-end; }
         
