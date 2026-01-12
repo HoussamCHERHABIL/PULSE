@@ -4454,6 +4454,13 @@
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
                                         </button>
                                         
+                                        <div class="ai-tools-separator"></div>
+                                        
+                                        <!-- Analyze Style - brain/chart icon -->
+                                        <button class="ai-tool-btn" onclick="event.stopPropagation(); analyzeWritingStyle()" title="Analyze my writing style">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10H12V2z"/><path d="M12 2a10 10 0 0 1 10 10"/><path d="M12 12l8-4"/></svg>
+                                        </button>
+                                        
                                         <div class="ai-tools-spacer"></div>
                                         
                                         <!-- Keyboard hint -->
@@ -4840,6 +4847,20 @@
         // N8N Webhook URL - Triggers email sync from Gmail
         const N8N_WEBHOOK_URL = 'https://cherhabil.app.n8n.cloud/webhook/6b9fd857-4434-45d4-9dc9-759ac4732278';
         const FETCH_ATTACHMENT_WEBHOOK = 'https://cherhabil.app.n8n.cloud/webhook/fetch-attachment';
+        
+        // JACE Email System - N8N Workflow Webhooks
+        const N8N_BASE_URL = 'https://cherhabil.app.n8n.cloud/webhook';
+        const GENERATE_DRAFT_WEBHOOK = `${N8N_BASE_URL}/generate-draft`;
+        const REFINE_DRAFT_WEBHOOK = `${N8N_BASE_URL}/refine-draft`;
+        const LEARN_FROM_SEND_WEBHOOK = `${N8N_BASE_URL}/learn-from-send`;
+        const ANALYZE_STYLE_WEBHOOK = `${N8N_BASE_URL}/analyze-style`;
+        const CHECK_FOLLOWUPS_WEBHOOK = `${N8N_BASE_URL}/check-followups`;
+        const KNOWLEDGE_SEARCH_WEBHOOK = `${N8N_BASE_URL}/knowledge-search`;
+        const USER_EMAIL = 'hello@cherhabil.com';
+        
+        // Draft learning state - tracks AI drafts for learning
+        let originalAIDraft = null;  // The AI-generated draft before user edits
+        let currentDraftThreadId = null;  // Thread ID for learning context
         
         // Supabase Realtime channel
         let realtimeChannel = null;
@@ -7228,7 +7249,7 @@
             document.querySelector('.ai-reply-section').scrollIntoView({ behavior: 'smooth' });
         }
 
-        function generateAIReply() {
+        async function generateAIReply() {
             // For new emails, don't require currentEmail
             if (!state.currentEmail && state.composeMode !== 'new') {
                 showToast('Select an email first');
@@ -7237,20 +7258,60 @@
             
             // Show loading state
             const textarea = document.getElementById('aiReplyText');
-            textarea.placeholder = 'Generating AI draft...';
+            const originalPlaceholder = textarea.placeholder;
             textarea.value = '';
+            textarea.placeholder = '🤖 Generating AI draft...';
+            textarea.disabled = true;
             
-            // TODO: Call AI API to generate reply based on email content
-            setTimeout(() => {
-                // For now, just show a placeholder - AI integration will replace this
+            logToChat('action', `🤖 Generating AI draft for: "${(state.currentEmail?.subject || 'New email').substring(0, 40)}..."`);
+            
+            try {
+                const response = await fetch(GENERATE_DRAFT_WEBHOOK, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        gmail_id: state.currentEmail?.gmail_id || '',
+                        thread_id: state.currentEmail?.thread_id || '',
+                        instruction: 'Reply to this email professionally and helpfully',
+                        user_email: USER_EMAIL,
+                        recipient_email: state.currentEmail?.sender_email || '',
+                        original_subject: state.currentEmail?.subject || '',
+                        thread_context: state.currentEmail?.body_preview || state.currentEmail?.body_full || ''
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success && data.draft) {
+                    textarea.value = data.draft;
+                    // Store for learning from edits later
+                    originalAIDraft = data.draft;
+                    currentDraftThreadId = state.currentEmail?.thread_id || '';
+                    
+                    showToast('AI draft generated ✓');
+                    logToChat('system', '✅ AI draft generated successfully');
+                    
+                    // Auto-save the draft
+                    scheduleDraftSave();
+                } else {
+                    throw new Error(data.error || 'No draft returned');
+                }
+            } catch (error) {
+                console.error('AI draft generation error:', error);
+                showToast('AI draft failed - try again or write manually');
+                logToChat('system', `❌ AI draft failed: ${error.message}`);
                 textarea.value = '';
-                textarea.placeholder = 'Write your message or describe what you want and click Generate...';
-                showToast('AI draft generation - coming soon');
-            }, 500);
+                textarea.placeholder = 'AI draft unavailable. Write your reply manually...';
+            }
+            
+            textarea.disabled = false;
+            if (!textarea.value) {
+                textarea.placeholder = originalPlaceholder;
+            }
         }
 
         // Apply AI transformation to reply text
-        function applyAITool(tool) {
+        async function applyAITool(tool) {
             const textarea = document.getElementById('aiReplyText');
             const text = textarea.value.trim();
             
@@ -7259,35 +7320,96 @@
                 return;
             }
             
-            // Show loading
-            const originalText = text;
-            textarea.value = 'Applying AI...';
+            // Map tool to instruction
+            const toolInstructions = {
+                'grammar': 'Fix any grammar, spelling, or punctuation errors. Keep the same tone and meaning.',
+                'professional': 'Make this more formal and professional. Use business-appropriate language.',
+                'formal': 'Make this more formal and professional. Use business-appropriate language.',
+                'casual': 'Make this more casual and friendly. Use conversational language.',
+                'friendly': 'Make this warmer and more friendly while staying professional.',
+                'shorter': 'Make this more concise. Remove unnecessary words while keeping key points.',
+                'concise': 'Make this more concise. Remove unnecessary words while keeping key points.',
+                'longer': 'Expand this with more detail and context. Add helpful information.',
+                'refine': 'Polish and improve this text. Make it clearer and more effective.'
+            };
             
-            // TODO: Call AI API with the transformation type
-            // For now, simulate the transformation
-            setTimeout(() => {
-                let result = originalText;
-                switch(tool) {
-                    case 'grammar':
-                        showToast('Grammar fixed');
-                        break;
-                    case 'professional':
-                        result = originalText.replace(/Hi /g, 'Dear ').replace(/Thanks/g, 'Thank you');
-                        showToast('Made professional');
-                        break;
-                    case 'casual':
-                        result = originalText.replace(/Dear /g, 'Hey ').replace(/Thank you/g, 'Thanks');
-                        showToast('Made casual');
-                        break;
-                    case 'shorter':
-                        showToast('Made shorter');
-                        break;
-                    case 'longer':
-                        showToast('Made longer');
-                        break;
+            const instruction = toolInstructions[tool] || 'Improve this text';
+            
+            // Show loading state
+            const originalText = text;
+            textarea.value = `⏳ Applying "${tool}"...`;
+            textarea.disabled = true;
+            
+            try {
+                const response = await fetch(REFINE_DRAFT_WEBHOOK, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        draft_id: currentDraftId || `temp-${Date.now()}`,
+                        current_draft: originalText,
+                        instruction: instruction,
+                        user_email: USER_EMAIL
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success && data.refined_draft) {
+                    textarea.value = data.refined_draft;
+                    showToast(`Applied: ${tool} ✓`);
+                    
+                    // Auto-save the refined draft
+                    scheduleDraftSave();
+                } else {
+                    throw new Error(data.error || 'Refinement failed');
                 }
-                textarea.value = result;
-            }, 300);
+            } catch (error) {
+                console.error('AI refinement error:', error);
+                textarea.value = originalText;
+                showToast(`${tool} failed - try again`);
+            }
+            
+            textarea.disabled = false;
+        }
+        
+        // Analyze user's writing style from sent emails
+        async function analyzeWritingStyle() {
+            showToast('📊 Analyzing your writing style...');
+            logToChat('action', '📊 Analyzing writing style from sent emails...');
+            
+            try {
+                const response = await fetch(ANALYZE_STYLE_WEBHOOK, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_email: USER_EMAIL
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    const emailCount = data.emails_analyzed || 0;
+                    const profile = data.profile || {};
+                    
+                    showToast(`Style analyzed! ${emailCount} emails processed ✓`);
+                    logToChat('system', `📊 Writing style updated from ${emailCount} emails`);
+                    
+                    // Show profile details if available
+                    if (profile.formality_level !== undefined) {
+                        const formality = Math.round(profile.formality_level * 100);
+                        const warmth = Math.round((profile.warmth_level || 0.5) * 100);
+                        const directness = Math.round((profile.directness_level || 0.5) * 100);
+                        logToChat('system', `📈 Style: ${formality}% formal, ${warmth}% warm, ${directness}% direct`);
+                    }
+                } else {
+                    throw new Error(data.error || 'Analysis failed');
+                }
+            } catch (error) {
+                console.error('Style analysis error:', error);
+                showToast('Style analysis failed');
+                logToChat('system', `❌ Style analysis failed: ${error.message}`);
+            }
         }
 
         // Email selection state
@@ -7589,8 +7711,8 @@
             if (attachArea) attachArea.innerHTML = '';
         }
 
-        // N8N Webhook URL for sending emails - UPDATE THIS after importing workflow
-        const SEND_EMAIL_WEBHOOK = 'https://cherhabil.app.n8n.cloud/webhook/pulse-send-email';
+        // N8N Webhook URL for sending emails
+        const SEND_EMAIL_WEBHOOK = `${N8N_BASE_URL}/pulse-send-email`;
         
         async function sendReply() {
             const to = document.getElementById('replyTo').value;
@@ -7673,6 +7795,30 @@
                 if (result.success || response.ok) {
                     showToast(`Email ${state.composeMode === 'forward' ? 'forwarded' : 'sent'} successfully! ✓`);
                     logToChat('system', `✅ Email sent to ${emailData.to}: "${subject}"`);
+                    
+                    // Learn from user edits if there was an AI draft
+                    if (originalAIDraft && originalAIDraft !== body) {
+                        try {
+                            await fetch(LEARN_FROM_SEND_WEBHOOK, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    original_draft: originalAIDraft,
+                                    final_sent: body,
+                                    recipient_email: emailData.to,
+                                    user_email: USER_EMAIL,
+                                    thread_id: currentDraftThreadId || state.currentEmail?.thread_id || ''
+                                })
+                            });
+                            console.log('Learning data sent to N8N');
+                            logToChat('system', '📚 Learning from your edits...');
+                        } catch (learnError) {
+                            console.log('Learn from send failed (non-critical):', learnError);
+                        }
+                    }
+                    // Clear draft learning state
+                    originalAIDraft = null;
+                    currentDraftThreadId = null;
                     
                     // Save sent email to Supabase
                     await saveSentEmail(emailData, subject, result);
@@ -7978,36 +8124,45 @@
             
             // Show generating state
             const textarea = document.getElementById('aiReplyText');
-            textarea.value = 'Generating your draft...';
+            textarea.value = '🤖 Generating your draft...';
             textarea.disabled = true;
             
             logToChat('action', `🤖 Generating: "${prompt.substring(0, 40)}${prompt.length > 40 ? '...' : ''}"`);
             
             try {
-                // Call AI generation via N8N webhook
-                const response = await fetch(N8N_WEBHOOK_URL.replace('6b9fd857-4434-45d4-9dc9-759ac4732278', 'ai-draft'), {
+                // Call AI generation via N8N webhook - correct endpoint
+                const response = await fetch(GENERATE_DRAFT_WEBHOOK, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
-                        action: 'generate_draft',
-                        prompt: prompt,
-                        timestamp: Date.now()
+                        instruction: prompt,
+                        user_email: USER_EMAIL,
+                        gmail_id: '',
+                        thread_id: '',
+                        recipient_email: '',
+                        original_subject: '',
+                        thread_context: ''
                     })
                 });
                 
-                if (response.ok) {
-                    const data = await response.json();
-                    textarea.value = data.draft || generateLocalDraft(prompt);
+                const data = await response.json();
+                
+                if (data.success && data.draft) {
+                    textarea.value = data.draft;
+                    // Store for learning from edits later
+                    originalAIDraft = data.draft;
+                    currentDraftThreadId = '';
+                    logToChat('system', '✅ AI draft generated');
                 } else {
-                    textarea.value = generateLocalDraft(prompt);
+                    throw new Error(data.error || 'No draft returned');
                 }
             } catch (error) {
-                console.log('AI draft via webhook failed, using local generation');
+                console.log('AI draft via webhook failed:', error);
                 textarea.value = generateLocalDraft(prompt);
+                logToChat('system', '⚠️ Using local draft generation');
             }
             
             textarea.disabled = false;
-            logToChat('system', '✅ Draft generated');
             
             // Auto-save the draft
             saveDraft();
@@ -9248,7 +9403,7 @@
         // ============================================
         // TASK WIDGET - DATABASE-BACKED
         // ============================================
-        const N8N_TASK_WEBHOOK = 'https://cherhabil.app.n8n.cloud/webhook/task-processor';
+        const N8N_TASK_WEBHOOK = `${N8N_BASE_URL}/task-processor`;
         let taskList = [];
         let currentTaskTab = 'all';
         
