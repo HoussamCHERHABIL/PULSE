@@ -978,6 +978,79 @@
         .task-mini.completed .task-mini-text { text-decoration: line-through; color: rgba(255,255,255,0.3); margin-left: 0; }
         .task-mini-value { font-size: 10px; color: var(--admin-color); opacity: 0.7; }
 
+        /* Task Details Panel - Expandable */
+        .task-details {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease, padding 0.3s ease, margin 0.3s ease;
+            background: transparent;
+            border-radius: 0 0 10px 10px;
+            margin: 0 0 6px 0;
+            border-left: 3px solid transparent;
+        }
+        .task-details.expanded {
+            max-height: 300px;
+            padding: 12px 12px 12px 16px;
+            margin-top: -4px;
+            border-left-color: rgba(255,255,255,0.1);
+        }
+        .task-details-row { display: flex; gap: 8px; margin-bottom: 8px; font-size: 11px; }
+        .task-details-label { color: var(--text-dim); min-width: 80px; }
+        .task-details-value { color: var(--text); flex: 1; }
+        .task-details-desc { font-size: 12px; color: rgba(255,255,255,0.6); line-height: 1.5; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.06); }
+
+        /* Chat Date/Time Header */
+        .chat-date-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            font-size: 12px;
+        }
+        .chat-date-today { color: var(--text); font-weight: 500; }
+        .chat-date-full { color: var(--text-dim); font-weight: 400; }
+        .chat-time-now { color: var(--admin-color); font-weight: 500; font-variant-numeric: tabular-nums; }
+
+        /* Claude-style assistant message formatting */
+        .chat-msg.assistant .chat-bubble p { margin-bottom: 12px; }
+        .chat-msg.assistant .chat-bubble p:last-child { margin-bottom: 0; }
+        .chat-msg.assistant .chat-bubble h1,
+        .chat-msg.assistant .chat-bubble h2,
+        .chat-msg.assistant .chat-bubble h3 {
+            color: #fff; margin: 16px 0 8px 0; font-weight: 600;
+        }
+        .chat-msg.assistant .chat-bubble h1:first-child,
+        .chat-msg.assistant .chat-bubble h2:first-child,
+        .chat-msg.assistant .chat-bubble h3:first-child { margin-top: 0; }
+        .chat-msg.assistant .chat-bubble h1 { font-size: 18px; }
+        .chat-msg.assistant .chat-bubble h2 { font-size: 15px; }
+        .chat-msg.assistant .chat-bubble h3 { font-size: 13px; }
+        .chat-msg.assistant .chat-bubble strong { color: #fff; font-weight: 600; }
+        .chat-msg.assistant .chat-bubble em { font-style: italic; color: rgba(255,255,255,0.85); }
+        .chat-msg.assistant .chat-bubble ul,
+        .chat-msg.assistant .chat-bubble ol { margin: 12px 0; padding-left: 20px; }
+        .chat-msg.assistant .chat-bubble li { margin-bottom: 6px; }
+        .chat-msg.assistant .chat-bubble li::marker { color: var(--admin-color); }
+        .chat-msg.assistant .chat-bubble code {
+            background: rgba(139, 92, 246, 0.15); color: #c4b5fd;
+            padding: 2px 6px; border-radius: 4px;
+            font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace; font-size: 12px;
+        }
+        .chat-msg.assistant .chat-bubble pre {
+            background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 8px; padding: 12px; margin: 12px 0; overflow-x: auto;
+        }
+        .chat-msg.assistant .chat-bubble pre code {
+            background: none; padding: 0; color: #e2e8f0; font-size: 12px; line-height: 1.5;
+        }
+        .chat-msg.assistant .chat-bubble blockquote {
+            border-left: 3px solid var(--admin-color); padding-left: 12px;
+            margin: 12px 0; color: rgba(255,255,255,0.7); font-style: italic;
+        }
+        .chat-msg.assistant .chat-bubble a { color: var(--admin-color); text-decoration: none; }
+        .chat-msg.assistant .chat-bubble a:hover { text-decoration: underline; }
+
         /* Task Widget Tabs */
         .task-tabs-row { display: flex; gap: 4px; padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.06); align-items: center; }
         .task-add-btn { width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; background: var(--admin-bg); border: none; border-radius: 6px; color: var(--admin-color); cursor: pointer; transition: all 0.2s ease; margin-right: 4px; flex-shrink: 0; }
@@ -2936,7 +3009,7 @@
             height: 12px;
         }
 
-        .chat-input-area { padding: 12px 16px 16px; }
+        .chat-input-area { padding: 16px; }
 
         .input-row {
             display: flex;
@@ -2977,7 +3050,7 @@
         /* Attachment menu */
         .chat-attach-menu {
             position: absolute;
-            bottom: calc(100% + 8px);
+            top: calc(100% + 8px);
             left: 0;
             background: rgba(23, 23, 37, 0.98);
             border: 1px solid var(--border);
@@ -4541,25 +4614,7 @@
                 <button class="widget-internal-fullscreen-btn" onclick="event.stopPropagation(); toggleFullscreen(event, 'widgetChat')" title="Toggle fullscreen">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
                 </button>
-                <div class="chat-messages" id="chatMessages">
-                    <div class="chat-msg assistant">
-                        <div class="chat-bubble">Good morning! You have <strong>3 high-impact tasks</strong> today worth approximately <strong>$65K</strong> in potential revenue.</div>
-                        <div class="chat-time">8:00 AM</div>
-                        <div class="chat-quick-actions">
-                            <span class="quick-action-chip" onclick="event.stopPropagation()">📅 Show schedule</span>
-                            <span class="quick-action-chip" onclick="event.stopPropagation()">📧 Check emails</span>
-                            <span class="quick-action-chip" onclick="event.stopPropagation(); demoExecutionSteps()">⚡ Demo steps</span>
-                        </div>
-                    </div>
-                    <div class="chat-msg user">
-                        <div class="chat-bubble">What do I have to focus on today?</div>
-                        <div class="chat-time">8:02 AM</div>
-                    </div>
-                    <div class="chat-msg assistant">
-                        <div class="chat-bubble">Click the <strong>refresh button</strong> in your Email widget to sync your latest emails. I'll help you prioritize them!</div>
-                        <div class="chat-time">8:02 AM</div>
-                    </div>
-                </div>
+                <!-- Input at top -->
                 <div class="chat-input-area" onclick="event.stopPropagation()">
                     <div class="input-row" id="chatInputRow">
                         <div class="chat-attach-menu" id="chatAttachMenu">
@@ -4594,6 +4649,16 @@
                     <input type="file" id="chatFileInput" accept="*/*" style="display:none" onchange="handleChatFileSelect(event)">
                     <input type="file" id="chatCameraInput" accept="image/*" capture="environment" style="display:none" onchange="handleChatFileSelect(event)">
                 </div>
+                <!-- Date/Time Header -->
+                <div class="chat-date-header">
+                    <div>
+                        <span class="chat-date-today">Today</span>
+                        <span class="chat-date-full" id="chatDateFull"></span>
+                    </div>
+                    <span class="chat-time-now" id="chatTimeNow"></span>
+                </div>
+                <!-- Messages (newest at top) -->
+                <div class="chat-messages" id="chatMessages"></div>
             </div>
 
             <!-- Voice Notes will be dynamically created -->
@@ -4888,6 +4953,15 @@
             await positionElements();
             centerView();
             loadTasksFromDB(); // Load tasks from database
+
+            // Chat initialization
+            updateDateTime();
+            setInterval(updateDateTime, 60000);
+            await initChatSession();
+            if (conversationHistory.length === 0) {
+                setTimeout(() => sendToPulseAssistant('Hey'), 500);
+            }
+
             document.getElementById('workspace').addEventListener('scroll', showMiniMap);
             
             // INFINITE WORKSPACE - Auto-expand when scrolling near edges
@@ -8379,17 +8453,16 @@
         function logToChat(type, message) {
             const container = document.getElementById('chatMessages');
             if (!container) return;
-            
+
             const time = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
             const msg = document.createElement('div');
             msg.className = `chat-msg ${type === 'action' ? 'user' : 'assistant'}`;
-            
+
             let icon = '';
             if (type === 'system') icon = '<span style="opacity:0.7">🔹</span> ';
-            
+
             msg.innerHTML = `<div class="chat-bubble">${icon}${message}</div><div class="chat-time">${time}</div>`;
-            container.appendChild(msg);
-            container.scrollTop = container.scrollHeight;
+            container.insertBefore(msg, container.firstChild);
         }
 
         // Compose new email
@@ -8858,12 +8931,136 @@
         // CHAT INPUT & VOICE RECORDING - ELEVENLABS IMPLEMENTATION
         // ═══════════════════════════════════════════════════════════════
         
+        // Chat session persistence state
+        let currentChatSessionId = null;
+        let conversationHistory = [];
+
+        // ═══════════════════════════════════════════════════════════════
+        // CHAT PERSISTENCE (SUPABASE)
+        // ═══════════════════════════════════════════════════════════════
+        async function initChatSession() {
+            try {
+                const today = new Date().toLocaleDateString();
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/chat_sessions?title=eq.Chat%20${encodeURIComponent(today)}&order=created_at.desc&limit=1`, {
+                    headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` }
+                });
+                const existing = await response.json();
+
+                if (existing && existing.length > 0) {
+                    currentChatSessionId = existing[0].id;
+                    await loadTodayMessages();
+                } else {
+                    const createResp = await fetch(`${SUPABASE_URL}/rest/v1/chat_sessions`, {
+                        method: 'POST',
+                        headers: {
+                            'apikey': SUPABASE_ANON_KEY,
+                            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                            'Content-Type': 'application/json',
+                            'Prefer': 'return=representation'
+                        },
+                        body: JSON.stringify({ title: 'Chat ' + today })
+                    });
+                    const data = await createResp.json();
+                    currentChatSessionId = Array.isArray(data) ? data[0]?.id : data?.id;
+                }
+            } catch (e) {
+                console.error('Failed to init chat session:', e);
+            }
+        }
+
+        async function loadTodayMessages() {
+            if (!currentChatSessionId) return;
+            try {
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/chat_messages?session_id=eq.${currentChatSessionId}&order=created_at.asc`, {
+                    headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` }
+                });
+                const messages = await response.json();
+
+                if (messages && messages.length > 0) {
+                    messages.forEach(msg => {
+                        addChatMessageToDOM(msg.role, msg.content, false);
+                        conversationHistory.push({ role: msg.role, content: msg.content });
+                    });
+                }
+            } catch (e) {
+                console.error('Failed to load messages:', e);
+            }
+        }
+
+        async function saveChatMessage(role, content, intent = null) {
+            if (!currentChatSessionId) return;
+            try {
+                await fetch(`${SUPABASE_URL}/rest/v1/chat_messages`, {
+                    method: 'POST',
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        session_id: currentChatSessionId,
+                        role: role,
+                        content: content,
+                        intent: intent
+                    })
+                });
+            } catch (e) {
+                console.error('Failed to save message:', e);
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // MESSAGE FORMATTING (MARKDOWN TO HTML)
+        // ═══════════════════════════════════════════════════════════════
+        function formatMessage(text) {
+            if (!text) return '';
+
+            let html = text
+                .replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre><code class="language-$1">$2</code></pre>')
+                .replace(/`([^`]+)`/g, '<code>$1</code>')
+                .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+                .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+                .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+                .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
+                .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.+?)\*/g, '<em>$1</em>')
+                .replace(/^- (.+)$/gm, '<li>$1</li>')
+                .replace(/^(\d+)\. (.+)$/gm, '<li>$2</li>')
+                .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
+                .replace(/^---$/gm, '<hr>')
+                .replace(/\n\n/g, '</p><p>')
+                .replace(/\n/g, '<br>');
+
+            html = html.replace(/(<li>.*<\/li>)+/g, match => '<ul>' + match + '</ul>');
+
+            if (!html.startsWith('<')) {
+                html = '<p>' + html + '</p>';
+            }
+
+            return html;
+        }
+
+        // Date/Time display for chat header
+        function updateDateTime() {
+            const now = new Date();
+            const dateEl = document.getElementById('chatDateFull');
+            const timeEl = document.getElementById('chatTimeNow');
+
+            if (dateEl) {
+                const options = { weekday: 'long', month: 'short', day: 'numeric' };
+                dateEl.textContent = ' · ' + now.toLocaleDateString('en-US', options);
+            }
+            if (timeEl) {
+                timeEl.textContent = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+            }
+        }
+
         // Recording state and audio analysis
         const MAX_BARS = 400;
         const MIN_HEIGHT = 3;
         const MAX_HEIGHT = 28;
         const SILENCE_THRESHOLD = 0.08;
-        
+
         let recording = null;
         let audioContext = null;
         let analyser = null;
@@ -8941,31 +9138,32 @@
         // Handle send (Enter key)
         function handleChatSend() {
             const input = document.getElementById('chatInput');
-            if (input.value.trim()) {
-                addChatMessage('user', input.value);
+            const message = input.value.trim();
+            if (message) {
+                addChatMessage('user', message);
                 input.value = '';
                 resetTextarea();
                 handleChatInput();
-                // TODO: Send to AI backend
-                simulateAIResponse();
+                sendToPulseAssistant(message);
             }
         }
-        
+
         // Handle action button click (mic/send/stop)
         function handleAction() {
             const input = document.getElementById('chatInput');
             const btn = document.getElementById('actionBtn');
             const hasText = input.value.trim().length > 0;
-            
+
             if (btn.classList.contains('recording')) {
                 stopRecording();
             } else if (hasText) {
-                addChatMessage('user', input.value);
+                const message = input.value.trim();
+                addChatMessage('user', message);
                 input.value = '';
                 resetTextarea();
                 handleChatInput();
                 btn.classList.remove('has-text');
-                simulateAIResponse();
+                sendToPulseAssistant(message);
             } else {
                 startRecording();
             }
@@ -9219,26 +9417,79 @@
             if (timerEl) timerEl.textContent = '0:00';
         }
         
-        // Simulate AI response (placeholder for Master Mind integration)
-        function simulateAIResponse() {
-            setTimeout(() => {
-                const responses = [
-                    "I've analyzed your inbox. You have 3 high-priority emails that need attention.",
-                    "I'm drafting a response based on your previous communication style...",
-                    "Your tasks for today are organized by priority. Would you like me to walk you through them?"
-                ];
-                addChatMessage('ai', responses[Math.floor(Math.random() * responses.length)]);
-            }, 1500);
+        // ═══════════════════════════════════════════════════════════════
+        // PULSE ASSISTANT - N8N WEBHOOK INTEGRATION
+        // ═══════════════════════════════════════════════════════════════
+        async function sendToPulseAssistant(message) {
+            saveChatMessage('user', message);
+            conversationHistory.push({ role: 'user', content: message, timestamp: new Date().toISOString() });
+            if (conversationHistory.length > 20) conversationHistory = conversationHistory.slice(-20);
+
+            setChatWorking(true);
+
+            try {
+                const context = {
+                    tasks: taskList.filter(t => !t.is_completed).slice(0, 15),
+                    recent_messages: conversationHistory.slice(-10),
+                    session_id: currentChatSessionId
+                };
+
+                // 60 second timeout for slow workflows
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 60000);
+
+                const response = await fetch(N8N_PULSE_BRAIN, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message, timestamp: new Date().toISOString(), context }),
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
+
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const data = await response.json();
+                handlePulseResponse(data);
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    addChatMessage('assistant', "Request timed out — the workflow is taking too long. Try again or check N8N.");
+                } else {
+                    addChatMessage('assistant', "I'm having trouble connecting. Please try again.");
+                }
+            } finally {
+                setChatWorking(false);
+            }
+        }
+
+        function handlePulseResponse(data) {
+            conversationHistory.push({ role: 'assistant', content: data.message, timestamp: new Date().toISOString() });
+            saveChatMessage('assistant', data.message, data.intent || null);
+            addChatMessage('assistant', data.message);
+
+            if (data.intent === 'create_task' || data.task_created || data.action?.type === 'create_task') {
+                setTimeout(loadTasksFromDB, 500);
+                showToast('✅ Task created');
+            } else if (data.intent === 'complete_task' || data.task_updated) {
+                setTimeout(loadTasksFromDB, 500);
+            } else if (data.intent === 'create_event' || data.event_created || data.action?.type === 'create_event') {
+                showToast('✅ Event created');
+            }
         }
 
         function addChatMessage(type, content) {
+            addChatMessageToDOM(type, content, true);
+        }
+
+        function addChatMessageToDOM(type, content, animate = true) {
             const container = document.getElementById('chatMessages');
             const time = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
             const msg = document.createElement('div');
             msg.className = `chat-msg ${type}`;
-            msg.innerHTML = `<div class="chat-bubble">${escapeHtml(content)}</div><div class="chat-time">${time}</div>`;
-            container.appendChild(msg);
-            container.scrollTop = container.scrollHeight;
+            if (!animate) msg.style.animation = 'none';
+
+            const displayContent = type === 'assistant' ? formatMessage(content) : escapeHtml(content);
+            msg.innerHTML = `<div class="chat-bubble">${displayContent}</div><div class="chat-time">${time}</div>`;
+            container.insertBefore(msg, container.firstChild);
         }
         
         // ═══════════════════════════════════════════════════════════════
@@ -9302,8 +9553,7 @@
                 ${actionsHtml}
             `;
             
-            container.appendChild(msg);
-            container.scrollTop = container.scrollHeight;
+            container.insertBefore(msg, container.firstChild);
             return msg.id;
         }
         
@@ -9404,8 +9654,10 @@
         // TASK WIDGET - DATABASE-BACKED
         // ============================================
         const N8N_TASK_WEBHOOK = `${N8N_BASE_URL}/task-processor`;
+        const N8N_PULSE_BRAIN = `${N8N_BASE_URL}/pulse-brain`;
         let taskList = [];
         let currentTaskTab = 'all';
+        let expandedTaskId = null;
         
         // Task voice recording state
         let taskRecording = false;
@@ -9460,7 +9712,8 @@
                 focusContainer.innerHTML = focusTasks.map(task => {
                     const score = task.ris_score || 50;
                     const priorityClass = score >= 85 ? 'high' : score >= 70 ? 'medium' : 'low';
-                    return `<div class="task-card ${priorityClass}" data-id="${task.id}" onclick="event.stopPropagation()"><div class="task-card-checkbox" onclick="event.stopPropagation(); toggleTaskComplete('${task.id}')"></div><div class="task-card-content"><div class="task-card-header"><span class="task-card-title">${escapeHtml(task.title)}</span><span class="task-ris ${priorityClass}">${score}</span></div><div class="task-card-meta"><span class="task-meta-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${formatTaskTime(task.estimated_minutes)}</span><span class="task-meta-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>${formatTaskCurrency(task.potential_value)} potential</span></div></div></div>`;
+                    const isExpanded = expandedTaskId === task.id;
+                    return `<div class="task-card ${priorityClass}" data-id="${task.id}" onclick="event.stopPropagation(); toggleTaskDetails('${task.id}')"><div class="task-card-checkbox" onclick="event.stopPropagation(); toggleTaskComplete('${task.id}')"></div><div class="task-card-content"><div class="task-card-header"><span class="task-card-title">${escapeHtml(task.title)}</span><span class="task-ris ${priorityClass}">${score}</span></div><div class="task-card-meta"><span class="task-meta-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${formatTaskTime(task.estimated_minutes)}</span><span class="task-meta-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>${formatTaskCurrency(task.potential_value)} potential</span></div></div></div><div class="task-details ${isExpanded ? 'expanded' : ''}" id="taskDetails_${task.id}"><div class="task-details-row"><span class="task-details-label">Category</span><span class="task-details-value">${escapeHtml(task.category || 'General')}</span></div><div class="task-details-row"><span class="task-details-label">Due</span><span class="task-details-value">${task.due_date ? new Date(task.due_date).toLocaleDateString() : 'No deadline'}</span></div><div class="task-details-row"><span class="task-details-label">Status</span><span class="task-details-value">${task.status || 'pending'}</span></div>${task.description ? `<div class="task-details-desc">${escapeHtml(task.description)}</div>` : ''}</div>`;
                 }).join('');
             }
             
@@ -9612,6 +9865,23 @@
                     }) 
                 });
             } catch (error) { console.error('Toggle task error:', error); }
+        }
+
+        function toggleTaskDetails(taskId) {
+            const detailsEl = document.getElementById(`taskDetails_${taskId}`);
+            if (!detailsEl) return;
+
+            if (expandedTaskId === taskId) {
+                detailsEl.classList.remove('expanded');
+                expandedTaskId = null;
+            } else {
+                if (expandedTaskId) {
+                    const prevEl = document.getElementById(`taskDetails_${expandedTaskId}`);
+                    if (prevEl) prevEl.classList.remove('expanded');
+                }
+                detailsEl.classList.add('expanded');
+                expandedTaskId = taskId;
+            }
         }
 
         function toggleTaskVoiceRecording() { 
