@@ -1255,13 +1255,82 @@
         .calendar-event.personal::before { background: var(--purple); }
         .calendar-event-value { font-size: 9px; opacity: 0.7; margin-top: 2px; }
 
+        /* Calendar body */
+        .calendar-body { flex: 1; overflow-y: auto; position: relative; }
+
+        /* Day view */
+        .cal-day-view { position: relative; }
+        .cal-hour-row { display: flex; height: 50px; border-bottom: 1px solid rgba(255,255,255,0.03); }
+        .cal-hour-label { width: 45px; padding: 4px 8px 0 0; font-size: 9px; color: var(--text-dim); text-align: right; flex-shrink: 0; border-right: 1px solid rgba(255,255,255,0.06); }
+        .cal-hour-content { flex: 1; position: relative; }
+        .cal-event {
+            position: absolute; left: 4px; right: 4px;
+            padding: 4px 8px 4px 12px; border-radius: 6px;
+            font-size: 11px; font-weight: 500; cursor: pointer;
+            overflow: hidden; z-index: 2; transition: transform 0.15s;
+        }
+        .cal-event:hover { transform: translateX(2px); }
+        .cal-event::before { content: ''; position: absolute; left: 0; top: 15%; bottom: 15%; width: 3px; border-radius: 2px; }
+        .cal-event.work { background: rgba(78,180,249,0.15); color: var(--admin-color); }
+        .cal-event.work::before { background: var(--admin-color); }
+        .cal-event.revenue { background: rgba(80,220,120,0.15); color: var(--green); }
+        .cal-event.revenue::before { background: var(--green); }
+        .cal-event.personal { background: rgba(122,90,238,0.15); color: #a0a0cc; }
+        .cal-event.personal::before { background: var(--purple); }
+        .cal-event-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .cal-event-time { font-size: 9px; opacity: 0.7; margin-top: 1px; }
+
+        /* Current time indicator */
+        .cal-time-indicator {
+            position: absolute; left: 45px; right: 0; height: 2px;
+            background: var(--red); z-index: 5; pointer-events: none;
+        }
+        .cal-time-indicator::before {
+            content: ''; position: absolute; left: -4px; top: -3px;
+            width: 8px; height: 8px; background: var(--red); border-radius: 50%;
+        }
+
+        /* Week view */
+        .cal-week-header { display: grid; grid-template-columns: 45px repeat(7, 1fr); border-bottom: 1px solid rgba(255,255,255,0.06); }
+        .cal-week-day-hdr { text-align: center; padding: 6px 2px; font-size: 10px; color: var(--text-dim); }
+        .cal-week-day-hdr.today { color: var(--admin-color); font-weight: 600; }
+        .cal-week-day-num { display: block; font-size: 14px; font-weight: 600; color: var(--text); margin-top: 2px; }
+        .cal-week-day-hdr.today .cal-week-day-num { background: var(--admin-color); color: #000; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; }
+        .cal-week-grid { display: grid; grid-template-columns: 45px repeat(7, 1fr); }
+        .cal-week-time { padding: 4px 8px 0 0; font-size: 9px; color: var(--text-dim); text-align: right; height: 40px; border-right: 1px solid rgba(255,255,255,0.06); }
+        .cal-week-cell { height: 40px; border-bottom: 1px solid rgba(255,255,255,0.03); border-right: 1px solid rgba(255,255,255,0.03); position: relative; }
+        .cal-week-evt { position: absolute; left: 1px; right: 1px; padding: 1px 3px; border-radius: 3px; font-size: 9px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; cursor: pointer; z-index: 2; }
+        .cal-week-evt.work { background: rgba(78,180,249,0.25); color: var(--admin-color); }
+        .cal-week-evt.revenue { background: rgba(80,220,120,0.25); color: var(--green); }
+        .cal-week-evt.personal { background: rgba(122,90,238,0.25); color: #a0a0cc; }
+
+        /* Month view */
+        .cal-month-header { display: grid; grid-template-columns: repeat(7, 1fr); border-bottom: 1px solid rgba(255,255,255,0.06); }
+        .cal-month-day-hdr { text-align: center; padding: 6px; font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
+        .cal-month-grid { display: grid; grid-template-columns: repeat(7, 1fr); }
+        .cal-month-cell {
+            min-height: 50px; padding: 4px; border-bottom: 1px solid rgba(255,255,255,0.03);
+            border-right: 1px solid rgba(255,255,255,0.03); cursor: pointer; transition: background 0.15s;
+        }
+        .cal-month-cell:hover { background: rgba(255,255,255,0.03); }
+        .cal-month-cell.today { background: rgba(78,180,249,0.08); }
+        .cal-month-cell.other-month { opacity: 0.3; }
+        .cal-month-num { font-size: 11px; font-weight: 500; color: var(--text); margin-bottom: 3px; }
+        .cal-month-cell.today .cal-month-num { color: var(--admin-color); font-weight: 700; }
+        .cal-month-dot { width: 5px; height: 5px; border-radius: 50%; display: inline-block; margin: 1px; }
+        .cal-month-dot.work { background: var(--admin-color); }
+        .cal-month-dot.revenue { background: var(--green); }
+        .cal-month-dot.personal { background: var(--purple); }
+        .cal-month-evt-text { font-size: 9px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
         .calendar-summary {
             display: flex;
             gap: 16px;
             padding: 12px;
             background: rgba(0,0,0,0.2);
             border-radius: 12px;
-            margin-top: 12px;
+            margin-top: auto;
+            flex-shrink: 0;
         }
 
         .summary-stat { display: flex; flex-direction: column; gap: 2px; }
@@ -4111,6 +4180,13 @@
             .ai-keyboard-hint {
                 display: none;
             }
+            /* Mobile: fullscreen chat widget fills viewport */
+            .widget.fullscreen {
+                border-radius: 0 !important;
+            }
+            .widget.fullscreen .chat-input-area {
+                padding-bottom: env(safe-area-inset-bottom, 16px);
+            }
         }
 
         @media (max-width: 480px) {
@@ -4247,44 +4323,22 @@
                 <button class="widget-internal-fullscreen-btn" onclick="event.stopPropagation(); toggleFullscreen(event, 'widgetCalendar')" title="Toggle fullscreen">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
                 </button>
-                <div class="widget-body">
+                <div class="widget-body" style="display:flex;flex-direction:column;overflow:hidden;">
                     <div class="calendar-header">
-                        <button class="calendar-nav-btn" onclick="event.stopPropagation()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></button>
-                        <span class="calendar-date-label">Tuesday, December 31</span>
-                        <button class="calendar-nav-btn" onclick="event.stopPropagation()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></button>
+                        <button class="calendar-nav-btn" onclick="event.stopPropagation(); navigateCalendar(-1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></button>
+                        <span class="calendar-date-label" id="calendarTitle"></span>
+                        <button class="calendar-nav-btn" onclick="event.stopPropagation(); navigateCalendar(1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></button>
                         <div class="calendar-tabs">
-                            <button class="calendar-tab active" onclick="event.stopPropagation()">Day</button>
-                            <button class="calendar-tab" onclick="event.stopPropagation()">Week</button>
-                            <button class="calendar-tab" onclick="event.stopPropagation()">Month</button>
+                            <button class="calendar-tab active" data-view="day" onclick="event.stopPropagation(); setCalendarView('day')">Day</button>
+                            <button class="calendar-tab" data-view="week" onclick="event.stopPropagation(); setCalendarView('week')">Week</button>
+                            <button class="calendar-tab" data-view="month" onclick="event.stopPropagation(); setCalendarView('month')">Month</button>
                         </div>
                     </div>
-                    <div class="calendar-grid">
-                        <div class="calendar-times">
-                            <div class="calendar-time-slot">9 AM</div>
-                            <div class="calendar-time-slot">10 AM</div>
-                            <div class="calendar-time-slot">11 AM</div>
-                            <div class="calendar-time-slot">12 PM</div>
-                            <div class="calendar-time-slot">1 PM</div>
-                        </div>
-                        <div class="calendar-events">
-                            <div class="calendar-hour-line"></div>
-                            <div class="calendar-hour-line"></div>
-                            <div class="calendar-hour-line"></div>
-                            <div class="calendar-hour-line"></div>
-                            <div class="calendar-hour-line"></div>
-                            <div class="calendar-event revenue" style="top: 5px; height: 95px;" onclick="event.stopPropagation()">
-                                <div>Investor Call - SWF</div>
-                                <div class="calendar-event-value">$500 potential</div>
-                            </div>
-                            <div class="calendar-event work" style="top: 105px; height: 45px;" onclick="event.stopPropagation()"><div>Team Standup</div></div>
-                            <div class="calendar-event personal" style="top: 155px; height: 45px;" onclick="event.stopPropagation()"><div>Lunch Break</div></div>
-                        </div>
-                    </div>
-                    <div class="calendar-summary">
-                        <div class="summary-stat"><span class="summary-value">6.5h</span><span class="summary-label">Scheduled</span></div>
-                        <div class="summary-stat"><span class="summary-value green">3.5h</span><span class="summary-label">High Value</span></div>
-                        <div class="summary-stat"><span class="summary-value cyan">$650</span><span class="summary-label">Projected</span></div>
-                        <div class="summary-stat"><span class="summary-value">54%</span><span class="summary-label">Efficiency</span></div>
+                    <div class="calendar-body" id="calendarBody"></div>
+                    <div class="calendar-summary" id="calendarSummary">
+                        <div class="summary-stat"><span class="summary-value" id="calSumScheduled">0h</span><span class="summary-label">Scheduled</span></div>
+                        <div class="summary-stat"><span class="summary-value green" id="calSumEvents">0</span><span class="summary-label">Events</span></div>
+                        <div class="summary-stat"><span class="summary-value cyan" id="calSumNext">—</span><span class="summary-label">Next Up</span></div>
                     </div>
                 </div>
             </div>
@@ -4960,6 +5014,19 @@
             await initChatSession();
             if (conversationHistory.length === 0) {
                 setTimeout(() => sendToPulseAssistant('Hey'), 500);
+            }
+
+            // Calendar time indicator update
+            setInterval(updateTimeIndicator, 60000);
+
+            // Mobile: open chat fullscreen on load
+            if (window.innerWidth <= 768 || /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+                setTimeout(() => {
+                    const chatWidget = document.getElementById('widgetChat');
+                    if (chatWidget && typeof toggleFullscreen === 'function') {
+                        toggleFullscreen(new MouseEvent('click'), 'widgetChat');
+                    }
+                }, 500);
             }
 
             document.getElementById('workspace').addEventListener('scroll', showMiniMap);
@@ -5720,7 +5787,7 @@
         // Handle real-time task changes
         function handleTaskChange(payload) {
             console.log('Task change:', payload.eventType, payload);
-            loadTasks(); // Reload tasks for simplicity
+            loadTasksFromDB(); // Reload tasks from database
         }
         
         // Handle real-time calendar changes
@@ -5760,34 +5827,269 @@
         }
         
         // ============================================
-        // LOAD CALENDAR EVENTS FROM SUPABASE
+        // CALENDAR WIDGET - FULL IMPLEMENTATION
         // ============================================
+        let calendarView = 'day';
+        let calendarDate = new Date();
+        let calendarEvents = [];
+        let calTimeIndicatorInterval = null;
+
         async function loadCalendarEvents() {
             try {
-                const today = new Date().toISOString().split('T')[0];
-                const response = await fetch(`${SUPABASE_URL}/rest/v1/calendar_events?start_time=gte.${today}&order=start_time.asc&limit=10`, {
-                    headers: {
-                        'apikey': SUPABASE_ANON_KEY,
-                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-                    }
+                const start = new Date(calendarDate);
+                start.setDate(1); start.setHours(0,0,0,0);
+                const end = new Date(start); end.setMonth(end.getMonth() + 2);
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/calendar_events?start_time=gte.${start.toISOString()}&start_time=lt.${end.toISOString()}&order=start_time.asc`, {
+                    headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` }
                 });
-                
                 if (response.ok) {
-                    const events = await response.json();
-                    renderCalendarEvents(events);
+                    calendarEvents = await response.json();
                 } else {
-                    console.log('Calendar events table may not exist yet');
+                    calendarEvents = [];
                 }
             } catch (error) {
                 console.log('Load calendar skipped:', error.message);
+                calendarEvents = [];
+            }
+            renderCalendar();
+        }
+
+        function renderCalendarEvents(events) {
+            calendarEvents = events || [];
+            renderCalendar();
+        }
+
+        function getEventCategory(evt) {
+            const t = (evt.title || '').toLowerCase() + ' ' + (evt.description || '').toLowerCase();
+            if (/invest|revenue|sales|deal|pitch|money|\$/i.test(t)) return 'revenue';
+            if (/personal|lunch|gym|doctor|family|break/i.test(t)) return 'personal';
+            return 'work';
+        }
+
+        function formatHour(h) {
+            if (h === 0) return '12 AM';
+            if (h < 12) return h + ' AM';
+            if (h === 12) return '12 PM';
+            return (h - 12) + ' PM';
+        }
+
+        function setCalendarView(view) {
+            calendarView = view;
+            document.querySelectorAll('#widgetCalendar .calendar-tab').forEach(t => t.classList.toggle('active', t.dataset.view === view));
+            renderCalendar();
+        }
+
+        function navigateCalendar(dir) {
+            if (calendarView === 'day') {
+                calendarDate.setDate(calendarDate.getDate() + dir);
+            } else if (calendarView === 'week') {
+                calendarDate.setDate(calendarDate.getDate() + dir * 7);
+            } else {
+                calendarDate.setMonth(calendarDate.getMonth() + dir);
+            }
+            loadCalendarEvents();
+        }
+
+        function updateCalendarTitle() {
+            const el = document.getElementById('calendarTitle');
+            if (!el) return;
+            const d = calendarDate;
+            const opts = { weekday: 'long', month: 'long', day: 'numeric' };
+            if (calendarView === 'day') {
+                el.textContent = d.toLocaleDateString('en-US', opts);
+            } else if (calendarView === 'week') {
+                const ws = new Date(d); ws.setDate(ws.getDate() - ws.getDay());
+                const we = new Date(ws); we.setDate(we.getDate() + 6);
+                el.textContent = ws.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' – ' + we.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            } else {
+                el.textContent = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
             }
         }
-        
-        function renderCalendarEvents(events) {
-            // For now, just log - full calendar rendering in Phase 2
-            console.log('Calendar events loaded:', events.length);
-            // The calendar widget currently has static content
-            // Dynamic event rendering will be implemented in Phase 2
+
+        function renderCalendar() {
+            updateCalendarTitle();
+            const body = document.getElementById('calendarBody');
+            if (!body) return;
+            if (calendarView === 'day') renderDayView(body);
+            else if (calendarView === 'week') renderWeekView(body);
+            else renderMonthView(body);
+            updateCalendarSummary();
+        }
+
+        function renderDayView(container) {
+            const startHour = 7, endHour = 22;
+            const dayStart = new Date(calendarDate); dayStart.setHours(0,0,0,0);
+            const dayEnd = new Date(calendarDate); dayEnd.setHours(23,59,59,999);
+            const dayEvts = calendarEvents.filter(e => {
+                const s = new Date(e.start_time);
+                return s >= dayStart && s <= dayEnd;
+            });
+
+            let html = '<div class="cal-day-view">';
+            for (let h = startHour; h <= endHour; h++) {
+                html += `<div class="cal-hour-row"><div class="cal-hour-label">${formatHour(h)}</div><div class="cal-hour-content" data-hour="${h}"></div></div>`;
+            }
+
+            // Events
+            dayEvts.forEach(evt => {
+                const s = new Date(evt.start_time);
+                const e = evt.end_time ? new Date(evt.end_time) : new Date(s.getTime() + 3600000);
+                const cat = getEventCategory(evt);
+                const topMin = s.getHours() * 60 + s.getMinutes();
+                const durMin = Math.max(20, (e - s) / 60000);
+                const top = (topMin - startHour * 60) * (50 / 60);
+                const height = durMin * (50 / 60);
+                const timeStr = s.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+                html += `<div class="cal-event ${cat}" style="position:absolute;top:${top}px;height:${height}px;left:49px;right:4px;" onclick="event.stopPropagation()"><div class="cal-event-title">${escapeHtml(evt.title)}</div><div class="cal-event-time">${timeStr}</div></div>`;
+            });
+
+            // Time indicator
+            const now = new Date();
+            if (dayStart.toDateString() === now.toDateString()) {
+                const nowMin = now.getHours() * 60 + now.getMinutes();
+                const indicTop = (nowMin - startHour * 60) * (50 / 60);
+                html += `<div class="cal-time-indicator" id="calTimeIndicator" style="top:${indicTop}px;"></div>`;
+            }
+
+            html += '</div>';
+            container.innerHTML = html;
+
+            // Auto-scroll to current time or first event
+            if (dayStart.toDateString() === now.toDateString()) {
+                const nowMin = now.getHours() * 60 + now.getMinutes();
+                const scrollTo = Math.max(0, (nowMin - startHour * 60) * (50 / 60) - 100);
+                container.scrollTop = scrollTo;
+            } else if (dayEvts.length > 0) {
+                const firstEvt = new Date(dayEvts[0].start_time);
+                const scrollTo = Math.max(0, (firstEvt.getHours() * 60 + firstEvt.getMinutes() - startHour * 60) * (50 / 60) - 50);
+                container.scrollTop = scrollTo;
+            }
+        }
+
+        function renderWeekView(container) {
+            const ws = new Date(calendarDate); ws.setDate(ws.getDate() - ws.getDay()); ws.setHours(0,0,0,0);
+            const we = new Date(ws); we.setDate(we.getDate() + 7);
+            const today = new Date(); today.setHours(0,0,0,0);
+            const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+            const startHour = 7, endHour = 21;
+
+            let html = '<div class="cal-week-header"><div></div>';
+            for (let d = 0; d < 7; d++) {
+                const day = new Date(ws); day.setDate(day.getDate() + d);
+                const isToday = day.toDateString() === today.toDateString();
+                html += `<div class="cal-week-day-hdr ${isToday ? 'today' : ''}">${dayNames[d]}<span class="cal-week-day-num">${day.getDate()}</span></div>`;
+            }
+            html += '</div><div class="cal-week-grid" style="position:relative;">';
+
+            for (let h = startHour; h <= endHour; h++) {
+                html += `<div class="cal-week-time">${formatHour(h)}</div>`;
+                for (let d = 0; d < 7; d++) {
+                    html += `<div class="cal-week-cell" data-day="${d}" data-hour="${h}"></div>`;
+                }
+            }
+
+            // Overlay events
+            const weekEvts = calendarEvents.filter(e => {
+                const s = new Date(e.start_time);
+                return s >= ws && s < we;
+            });
+
+            weekEvts.forEach(evt => {
+                const s = new Date(evt.start_time);
+                const dayIdx = s.getDay();
+                const e = evt.end_time ? new Date(evt.end_time) : new Date(s.getTime() + 3600000);
+                const cat = getEventCategory(evt);
+                const topMin = s.getHours() * 60 + s.getMinutes() - startHour * 60;
+                const durMin = Math.max(15, (e - s) / 60000);
+                const top = topMin * (40 / 60);
+                const height = Math.max(14, durMin * (40 / 60));
+                const colWidth = `calc((100% - 45px) / 7)`;
+                const left = `calc(45px + ${dayIdx} * ${colWidth})`;
+                html += `<div class="cal-week-evt ${cat}" style="position:absolute;top:${top}px;height:${height}px;left:${left};width:${colWidth};" onclick="event.stopPropagation()">${escapeHtml(evt.title)}</div>`;
+            });
+
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        function renderMonthView(container) {
+            const year = calendarDate.getFullYear(), month = calendarDate.getMonth();
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const today = new Date(); today.setHours(0,0,0,0);
+            const dayNames = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+
+            let html = '<div class="cal-month-header">';
+            dayNames.forEach(d => { html += `<div class="cal-month-day-hdr">${d}</div>`; });
+            html += '</div><div class="cal-month-grid">';
+
+            // Previous month padding
+            const prevDays = new Date(year, month, 0).getDate();
+            for (let i = firstDay - 1; i >= 0; i--) {
+                html += `<div class="cal-month-cell other-month"><div class="cal-month-num">${prevDays - i}</div></div>`;
+            }
+
+            // Current month days
+            for (let d = 1; d <= daysInMonth; d++) {
+                const cellDate = new Date(year, month, d);
+                const isToday = cellDate.toDateString() === today.toDateString();
+                const dayEvts = calendarEvents.filter(e => {
+                    const s = new Date(e.start_time);
+                    return s.getFullYear() === year && s.getMonth() === month && s.getDate() === d;
+                });
+                let dots = '';
+                dayEvts.slice(0, 3).forEach(evt => {
+                    dots += `<span class="cal-month-dot ${getEventCategory(evt)}"></span>`;
+                });
+                if (dayEvts.length > 0) {
+                    dots += `<div class="cal-month-evt-text">${escapeHtml(dayEvts[0].title)}</div>`;
+                }
+                html += `<div class="cal-month-cell ${isToday ? 'today' : ''}" onclick="event.stopPropagation(); calendarDate = new Date(${year},${month},${d}); setCalendarView('day');"><div class="cal-month-num">${d}</div>${dots}</div>`;
+            }
+
+            // Next month padding
+            const totalCells = firstDay + daysInMonth;
+            const remaining = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+            for (let i = 1; i <= remaining; i++) {
+                html += `<div class="cal-month-cell other-month"><div class="cal-month-num">${i}</div></div>`;
+            }
+
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        function updateCalendarSummary() {
+            const dayStart = new Date(calendarDate); dayStart.setHours(0,0,0,0);
+            const dayEnd = new Date(calendarDate); dayEnd.setHours(23,59,59,999);
+            const dayEvts = calendarEvents.filter(e => {
+                const s = new Date(e.start_time);
+                return s >= dayStart && s <= dayEnd;
+            });
+
+            let totalMin = 0;
+            dayEvts.forEach(evt => {
+                const s = new Date(evt.start_time);
+                const e = evt.end_time ? new Date(evt.end_time) : new Date(s.getTime() + 3600000);
+                totalMin += (e - s) / 60000;
+            });
+
+            const schedEl = document.getElementById('calSumScheduled');
+            const evtEl = document.getElementById('calSumEvents');
+            const nextEl = document.getElementById('calSumNext');
+            if (schedEl) schedEl.textContent = totalMin >= 60 ? `${(totalMin / 60).toFixed(1)}h` : `${Math.round(totalMin)}m`;
+            if (evtEl) evtEl.textContent = dayEvts.length;
+
+            const now = new Date();
+            const upcoming = dayEvts.find(e => new Date(e.start_time) > now);
+            if (nextEl) nextEl.textContent = upcoming ? upcoming.title.substring(0, 12) : '—';
+        }
+
+        function updateTimeIndicator() {
+            const indicator = document.getElementById('calTimeIndicator');
+            if (!indicator) return;
+            const now = new Date();
+            const nowMin = now.getHours() * 60 + now.getMinutes();
+            indicator.style.top = ((nowMin - 7 * 60) * (50 / 60)) + 'px';
         }
         
         function formatDate(dateStr) {
