@@ -5917,7 +5917,7 @@
         }
 
         function renderDayView(container) {
-            const startHour = 7, endHour = 22;
+            const startHour = 0, endHour = 23;
             const dayStart = new Date(calendarDate); dayStart.setHours(0,0,0,0);
             const dayEnd = new Date(calendarDate); dayEnd.setHours(23,59,59,999);
             const dayEvts = calendarEvents.filter(e => {
@@ -5954,7 +5954,7 @@
             html += '</div>';
             container.innerHTML = html;
 
-            // Auto-scroll to current time or first event
+            // Auto-scroll: current time for today, first event or 4 AM for other days
             if (dayStart.toDateString() === now.toDateString()) {
                 const nowMin = now.getHours() * 60 + now.getMinutes();
                 const scrollTo = Math.max(0, (nowMin - startHour * 60) * (50 / 60) - 100);
@@ -5963,6 +5963,8 @@
                 const firstEvt = new Date(dayEvts[0].start_time);
                 const scrollTo = Math.max(0, (firstEvt.getHours() * 60 + firstEvt.getMinutes() - startHour * 60) * (50 / 60) - 50);
                 container.scrollTop = scrollTo;
+            } else {
+                container.scrollTop = (4 * 60 - startHour * 60) * (50 / 60);
             }
         }
 
@@ -6089,7 +6091,7 @@
             if (!indicator) return;
             const now = new Date();
             const nowMin = now.getHours() * 60 + now.getMinutes();
-            indicator.style.top = ((nowMin - 7 * 60) * (50 / 60)) + 'px';
+            indicator.style.top = (nowMin * (50 / 60)) + 'px';
         }
         
         function formatDate(dateStr) {
